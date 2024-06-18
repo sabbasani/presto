@@ -60,7 +60,7 @@ public abstract class ArrowAbstractSplitManager
         ArrowFlightRequest request = getArrowFlightRequest(clientHandler.getConfig(),
                 query, tableHandle.getSchema(), tableHandle.getTable());
 
-        FlightInfo flightInfo = clientHandler.getFlightInfo(request, session, Optional.empty());
+        FlightInfo flightInfo = clientHandler.getFlightInfo(request, session);
         List<ArrowSplit> splits = flightInfo.getEndpoints()
                 .stream()
                 .map(info -> new ArrowSplit(

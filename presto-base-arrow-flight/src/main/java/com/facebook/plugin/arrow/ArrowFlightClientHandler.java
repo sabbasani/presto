@@ -35,19 +35,16 @@ public abstract class ArrowFlightClientHandler
 {
     private static final Logger logger = Logger.get(ArrowFlightClientHandler.class);
     private AtomicBoolean isClientClosed = new AtomicBoolean(true);
-    private final ArrowClientAuth arrowClientAuth;
     private final ArrowFlightConfig config;
     private Timer timer = new Timer(true);
-    private Optional<String> bearerToken = Optional.empty();
     private ArrowFlightClient arrowFlightClient;
     private Optional<InputStream> trustedCertificate = Optional.empty();
     private TimerTask closeTask;
     private static final int TIMER_DURATION_IN_MINUTES = 30;
 
-    public ArrowFlightClientHandler(ArrowFlightConfig config, ArrowClientAuth arrowClientAuth)
+    public ArrowFlightClientHandler(ArrowFlightConfig config)
     {
         this.config = config;
-        this.arrowClientAuth = arrowClientAuth;
     }
 
     private void initializeClient(Optional<String> uri)
@@ -99,7 +96,7 @@ public abstract class ArrowFlightClientHandler
 
     public ArrowFlightClient getClient(Optional<String> uri)
     {
-        if (isClientClosed.get()) { // Check if client is closed or not initialized
+        if (isClientClosed.get()) {
             logger.info("Reinitialize the client if closed or not initialized");
             initializeClient(uri);
             scheduleCloseTask();
@@ -110,7 +107,7 @@ public abstract class ArrowFlightClientHandler
         return this.arrowFlightClient;
     }
 
-    public FlightInfo getFlightInfo(ArrowFlightRequest request, ConnectorSession connectorSession, Optional<String> bearerToken)
+    public FlightInfo getFlightInfo(ArrowFlightRequest request, ConnectorSession connectorSession)
     {
         try {
             ArrowFlightClient client = getClient(Optional.empty());
@@ -127,11 +124,6 @@ public abstract class ArrowFlightClientHandler
     }
 
     protected abstract CredentialCallOption getCallOptions(ConnectorSession connectorSession);
-
-    public Optional<String> getBearerToken()
-    {
-        return bearerToken;
-    }
 
     public void close() throws Exception
     {

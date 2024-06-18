@@ -94,7 +94,7 @@ public abstract class ArrowAbstractMetadata
             ArrowFlightRequest request = getArrowFlightRequest(clientHandler.getConfig(), Optional.empty(),
                     dbSpecificSchemaName, dbSpecificTableName);
 
-            FlightInfo flightInfo = clientHandler.getFlightInfo(request, connectorSession, Optional.empty());
+            FlightInfo flightInfo = clientHandler.getFlightInfo(request, connectorSession);
             List<Field> fields = flightInfo.getSchema().getFields();
             return fields;
         }
