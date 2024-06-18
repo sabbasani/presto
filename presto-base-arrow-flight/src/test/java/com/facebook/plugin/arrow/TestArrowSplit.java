@@ -26,7 +26,7 @@ import static org.testng.Assert.assertEquals;
 public class TestArrowSplit
 {
     private final ArrowSplit split = new ArrowSplit("schemaName", "tableName",
-            "ticket".getBytes(), "token", Arrays.asList("http://host"));
+            "ticket".getBytes(), Arrays.asList("http://host"));
 
     @Test
     public void testNodes()

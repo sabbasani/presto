@@ -31,7 +31,6 @@ public class ArrowSplit
     private final String schemaName;
     private final String tableName;
     private final byte[] ticket;
-    private final String bearerToken;
     private final List<String> locationUrls;
 
     @JsonCreator
@@ -39,13 +38,11 @@ public class ArrowSplit
             @JsonProperty("schemaName") @Nullable String schemaName,
             @JsonProperty("tableName") String tableName,
             @JsonProperty("ticket") byte[] ticket,
-            @JsonProperty("bearerToken") String bearerToken,
             @JsonProperty("locationUrls") List<String> locationUrls)
     {
         this.schemaName = schemaName;
         this.tableName = tableName;
         this.ticket = ticket;
-        this.bearerToken = bearerToken;
         this.locationUrls = locationUrls;
     }
 
@@ -83,12 +80,6 @@ public class ArrowSplit
     public byte[] getTicket()
     {
         return ticket;
-    }
-
-    @JsonProperty
-    public String getBearerToken()
-    {
-        return bearerToken;
     }
 
     @JsonProperty

@@ -67,7 +67,6 @@ public abstract class ArrowAbstractSplitManager
                         tableHandle.getSchema(),
                         tableHandle.getTable(),
                         info.getTicket().getBytes(),
-                        clientHandler.getBearerToken().get(),
                         info.getLocations().stream().map(location -> location.getUri().toString()).collect(Collectors.toList())))
                 .collect(Collectors.collectingAndThen(Collectors.toList(), Collections::unmodifiableList));
         logger.info("created %d splits from arrow tickets", splits.size());

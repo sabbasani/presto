@@ -26,8 +26,6 @@ import com.facebook.presto.common.type.Type;
 import com.facebook.presto.common.type.VarcharType;
 import com.facebook.presto.spi.ConnectorPageSource;
 import com.facebook.presto.spi.ConnectorSession;
-import com.facebook.presto.spi.PrestoException;
-import com.facebook.presto.spi.StandardErrorCode;
 import io.airlift.slice.Slice;
 import io.airlift.slice.Slices;
 import org.apache.arrow.flight.FlightRuntimeException;
@@ -92,12 +90,8 @@ public class ArrowPageSource
         try {
             Optional<String> uri = split.getLocationUrls().isEmpty() ? Optional.empty() : Optional.of(split.getLocationUrls().get(0));
             flightClient = clientHandler.getClient(uri);
-            // Use the token that was sent in the split instead of generating a new one.
             flightStream = flightClient.getFlightClient().getStream(new Ticket(ticket),
-                    ArrowFlightConstants.CALL_OPTIONS_TIMEOUT, clientHandler.getCallOptions(connectorSession, Optional.of(split.getBearerToken())));
-        }
-        catch (IOException e) {
-            throw new PrestoException(StandardErrorCode.GENERIC_INTERNAL_ERROR, e);
+                    ArrowFlightConstants.CALL_OPTIONS_TIMEOUT, clientHandler.getCallOptions(connectorSession));
         }
         catch (FlightRuntimeException e) {
             throw new ArrowException(ARROW_FLIGHT_ERROR, e.getMessage(), e);

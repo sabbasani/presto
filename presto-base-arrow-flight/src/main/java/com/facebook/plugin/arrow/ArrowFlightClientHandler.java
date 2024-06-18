@@ -19,12 +19,10 @@ import org.apache.arrow.flight.FlightClient;
 import org.apache.arrow.flight.FlightDescriptor;
 import org.apache.arrow.flight.FlightInfo;
 import org.apache.arrow.flight.Location;
-import org.apache.arrow.flight.auth2.BearerCredentialWriter;
 import org.apache.arrow.flight.grpc.CredentialCallOption;
 import org.apache.arrow.memory.RootAllocator;
 
 import java.io.FileInputStream;
-import java.io.IOException;
 import java.io.InputStream;
 import java.util.Optional;
 import java.util.Timer;
@@ -116,7 +114,7 @@ public abstract class ArrowFlightClientHandler
     {
         try {
             ArrowFlightClient client = getClient(Optional.empty());
-            CredentialCallOption auth = this.getCallOptions(connectorSession, bearerToken);
+            CredentialCallOption auth = this.getCallOptions(connectorSession);
             FlightDescriptor descriptor = FlightDescriptor.command(request.getCommand());
             logger.debug("Fetching flight info");
             FlightInfo flightInfo = client.getFlightClient().getInfo(descriptor, ArrowFlightConstants.CALL_OPTIONS_TIMEOUT, auth);
@@ -128,17 +126,7 @@ public abstract class ArrowFlightClientHandler
         }
     }
 
-    public CredentialCallOption getCallOptions(ConnectorSession connectorSession, Optional<String> bearerToken) throws IOException
-    {
-        if (bearerToken.isPresent()) {
-            return new CredentialCallOption(new BearerCredentialWriter(bearerToken.get()));
-        }
-        else {
-            // If no token was passed in, generate a new token.
-            this.bearerToken = Optional.of(arrowClientAuth.getBearerToken(connectorSession));
-            return new CredentialCallOption(new BearerCredentialWriter(this.bearerToken.get()));
-        }
-    }
+    protected abstract CredentialCallOption getCallOptions(ConnectorSession connectorSession);
 
     public Optional<String> getBearerToken()
     {
