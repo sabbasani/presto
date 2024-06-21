@@ -46,7 +46,7 @@ public class ArrowPageSourceProvider
             columnHandles.add((ArrowColumnHandle) handle);
         }
         ArrowSplit arrowSplit = (ArrowSplit) split;
-        logger.debug("Processing split");
+        logger.debug("Processing split with flight ticket");
         return new ArrowPageSource(arrowSplit, columnHandles.build(), clientHandler, session);
     }
 }

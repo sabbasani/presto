@@ -152,16 +152,6 @@ public abstract class ArrowAbstractMetadata
                 case Time:
                     column.put(columnName, new ArrowColumnHandle(columnName, TimeType.TIME, typeHandle));
                     break;
-                case Duration:
-                case Map:
-                case List:
-                case Interval:
-                case Null:
-                case Struct:
-                case NONE:
-                case Union:
-                case LargeList:
-                case FixedSizeList:
                 default:
                     throw new UnsupportedOperationException("The data type " + field.getType().getTypeID() + " is not supported.");
             }
@@ -232,16 +222,6 @@ public abstract class ArrowAbstractMetadata
                 case Bool:
                     meta.add(new ColumnMetadata(columnName, BooleanType.BOOLEAN));
                     break;
-                case Duration:
-                case Map:
-                case List:
-                case Interval:
-                case Null:
-                case Struct:
-                case NONE:
-                case Union:
-                case LargeList:
-                case FixedSizeList:
                 default:
                     throw new UnsupportedOperationException("The data type " + field.getType().getTypeID() + " is not supported.");
             }

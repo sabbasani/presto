@@ -17,6 +17,7 @@ import org.testng.annotations.Test;
 
 import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertFalse;
+import static org.testng.Assert.assertNotNull;
 import static org.testng.Assert.assertTrue;
 
 public class TestArrowAbstractFlightRequest
@@ -56,5 +57,16 @@ public class TestArrowAbstractFlightRequest
         String table = "test_table";
         ArrowAbstractFlightRequest request = new TestArrowFlightRequest(schema, table);
         assertFalse(request.getQuery().isPresent());
+    }
+
+    @Test
+    public void testGetCommand()
+    {
+        TestArrowFlightRequest request = new TestArrowFlightRequest("schema");
+
+        byte[] command = request.getCommand();
+
+        assertNotNull(command);
+        assertEquals(0, command.length);
     }
 }
