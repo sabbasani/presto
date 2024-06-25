@@ -39,7 +39,7 @@ public class TestFlightClient
     private static Location serverLocation;
 
     @BeforeClass
-    public static void setup() throws Exception
+    public void setup() throws Exception
     {
         allocator = new RootAllocator(Long.MAX_VALUE);
         serverLocation = Location.forGrpcInsecure("127.0.0.1", 9443);
@@ -50,7 +50,7 @@ public class TestFlightClient
     }
 
     @AfterClass
-    public static void tearDown() throws Exception
+    public void tearDown() throws Exception
     {
         server.close();
         allocator.close();
