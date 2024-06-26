@@ -153,9 +153,7 @@ public abstract class ArrowFlightClientHandler
                 }
             }
         };
-        if (timer == null) {
-            timer = new Timer(true);
-        }
+        timer = new Timer(true);
         timer.schedule(closeTask, TIMER_DURATION_IN_MINUTES * 60 * 1000);
     }
 
