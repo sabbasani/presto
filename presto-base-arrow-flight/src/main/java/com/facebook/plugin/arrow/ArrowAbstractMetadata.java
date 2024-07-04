@@ -14,13 +14,17 @@
 package com.facebook.plugin.arrow;
 
 import com.facebook.airlift.log.Logger;
+import com.facebook.presto.common.type.BigintType;
 import com.facebook.presto.common.type.BooleanType;
 import com.facebook.presto.common.type.DateType;
 import com.facebook.presto.common.type.DecimalType;
 import com.facebook.presto.common.type.DoubleType;
 import com.facebook.presto.common.type.IntegerType;
+import com.facebook.presto.common.type.RealType;
+import com.facebook.presto.common.type.SmallintType;
 import com.facebook.presto.common.type.TimeType;
 import com.facebook.presto.common.type.TimestampType;
+import com.facebook.presto.common.type.TinyintType;
 import com.facebook.presto.common.type.VarbinaryType;
 import com.facebook.presto.common.type.VarcharType;
 import com.facebook.presto.spi.ColumnHandle;
@@ -120,7 +124,23 @@ public abstract class ArrowAbstractMetadata
             logger.debug("The value of the flight columnName is:- %s", columnName);
             switch (field.getType().getTypeID()) {
                 case Int:
-                    column.put(columnName, new ArrowColumnHandle(columnName, IntegerType.INTEGER, typeHandle));
+                    ArrowType.Int intType = (ArrowType.Int) field.getType();
+                    switch (intType.getBitWidth()) {
+                        case 64:
+                            column.put(columnName, new ArrowColumnHandle(columnName, BigintType.BIGINT, typeHandle));
+                            break;
+                        case 32:
+                            column.put(columnName, new ArrowColumnHandle(columnName, IntegerType.INTEGER, typeHandle));
+                            break;
+                        case 16:
+                            column.put(columnName, new ArrowColumnHandle(columnName, SmallintType.SMALLINT, typeHandle));
+                            break;
+                        case 8:
+                            column.put(columnName, new ArrowColumnHandle(columnName, TinyintType.TINYINT, typeHandle));
+                            break;
+                        default:
+                            throw new ArrowException(ARROW_FLIGHT_ERROR, "Invalid bit width " + intType.getBitWidth());
+                    }
                     break;
                 case Binary:
                 case LargeBinary:
@@ -138,7 +158,17 @@ public abstract class ArrowAbstractMetadata
                     column.put(columnName, new ArrowColumnHandle(columnName, VarcharType.VARCHAR, typeHandle));
                     break;
                 case FloatingPoint:
-                    column.put(columnName, new ArrowColumnHandle(columnName, DoubleType.DOUBLE, typeHandle));
+                    ArrowType.FloatingPoint floatingPoint = (ArrowType.FloatingPoint) field.getType();
+                    switch (floatingPoint.getPrecision()) {
+                        case SINGLE:
+                            column.put(columnName, new ArrowColumnHandle(columnName, RealType.REAL, typeHandle));
+                            break;
+                        case DOUBLE:
+                            column.put(columnName, new ArrowColumnHandle(columnName, DoubleType.DOUBLE, typeHandle));
+                            break;
+                        default:
+                            throw new ArrowException(ARROW_FLIGHT_ERROR, "Invalid floating point precision " + floatingPoint.getPrecision());
+                    }
                     break;
                 case Decimal:
                     ArrowType.Decimal decimalType = (ArrowType.Decimal) field.getType();
@@ -190,7 +220,23 @@ public abstract class ArrowAbstractMetadata
             String columnName = field.getName();
             switch (field.getType().getTypeID()) {
                 case Int:
-                    meta.add(new ColumnMetadata(columnName, IntegerType.INTEGER));
+                    ArrowType.Int intType = (ArrowType.Int) field.getType();
+                    switch (intType.getBitWidth()) {
+                        case 64:
+                            meta.add(new ColumnMetadata(columnName, BigintType.BIGINT));
+                            break;
+                        case 32:
+                            meta.add(new ColumnMetadata(columnName, IntegerType.INTEGER));
+                            break;
+                        case 16:
+                            meta.add(new ColumnMetadata(columnName, SmallintType.SMALLINT));
+                            break;
+                        case 8:
+                            meta.add(new ColumnMetadata(columnName, TinyintType.TINYINT));
+                            break;
+                        default:
+                            throw new ArrowException(ARROW_FLIGHT_ERROR, "Invalid bit width " + intType.getBitWidth());
+                    }
                     break;
                 case Binary:
                 case LargeBinary:
@@ -208,7 +254,17 @@ public abstract class ArrowAbstractMetadata
                     meta.add(new ColumnMetadata(columnName, VarcharType.VARCHAR));
                     break;
                 case FloatingPoint:
-                    meta.add(new ColumnMetadata(columnName, DoubleType.DOUBLE));
+                    ArrowType.FloatingPoint floatingPoint = (ArrowType.FloatingPoint) field.getType();
+                    switch (floatingPoint.getPrecision()) {
+                        case SINGLE:
+                            meta.add(new ColumnMetadata(columnName, RealType.REAL));  // Float4
+                            break;
+                        case DOUBLE:
+                            meta.add(new ColumnMetadata(columnName, DoubleType.DOUBLE));  // Float8
+                            break;
+                        default:
+                            throw new ArrowException(ARROW_FLIGHT_ERROR, "Invalid floating point precision " + floatingPoint.getPrecision());
+                    }
                     break;
                 case Decimal:
                     ArrowType.Decimal decimalType = (ArrowType.Decimal) field.getType();

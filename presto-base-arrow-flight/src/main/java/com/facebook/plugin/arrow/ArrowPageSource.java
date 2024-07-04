@@ -327,7 +327,8 @@ public class ArrowPageSource
                 builder.appendNull();
             }
             else {
-                type.writeDouble(builder, vector.get(i));
+                int intBits = Float.floatToIntBits(vector.get(i));
+                type.writeLong(builder, intBits);
             }
         }
         return builder.build();

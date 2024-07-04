@@ -25,8 +25,10 @@ import org.apache.arrow.memory.RootAllocator;
 import java.io.FileInputStream;
 import java.io.InputStream;
 import java.util.Optional;
-import java.util.Timer;
 import java.util.TimerTask;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import static com.facebook.plugin.arrow.ArrowErrorCode.ARROW_FLIGHT_ERROR;
@@ -36,7 +38,7 @@ public abstract class ArrowFlightClientHandler
     private static final Logger logger = Logger.get(ArrowFlightClientHandler.class);
     private AtomicBoolean isClientClosed = new AtomicBoolean(true);
     private final ArrowFlightConfig config;
-    private Timer timer = new Timer(true);
+    private ScheduledExecutorService scheduledExecutorService;
     private ArrowFlightClient arrowFlightClient;
     private Optional<InputStream> trustedCertificate = Optional.empty();
     private TimerTask closeTask;
@@ -140,28 +142,18 @@ public abstract class ArrowFlightClientHandler
 
     private void scheduleCloseTask()
     {
-        cancelCloseTask();
-        closeTask = new TimerTask() {
-            @Override
-            public void run()
-            {
-                try {
-                    close();
-                }
-                catch (Exception e) {
-                    logger.error(e);
-                }
+        scheduledExecutorService = Executors.newScheduledThreadPool(1);
+        Runnable closeTask = () -> {
+            try {
+                close();
+                logger.info("in closeTask");
             }
+            catch (Exception e) {
+                logger.error(e);
+            }
+            scheduledExecutorService.shutdown();
         };
-        timer = new Timer(true);
-        timer.schedule(closeTask, TIMER_DURATION_IN_MINUTES * 60 * 1000);
-    }
-
-    private void cancelCloseTask()
-    {
-        if (closeTask != null) {
-            closeTask.cancel();
-        }
+        scheduledExecutorService.schedule(closeTask, TIMER_DURATION_IN_MINUTES, TimeUnit.MINUTES);
     }
 
     public void resetTimer()
@@ -172,9 +164,8 @@ public abstract class ArrowFlightClientHandler
 
     public void shutdownTimer()
     {
-        if (timer != null) {
-            timer.cancel();
-            timer = null;
+        if (scheduledExecutorService != null) {
+            scheduledExecutorService.shutdownNow();
         }
     }
 }
