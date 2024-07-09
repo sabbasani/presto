@@ -203,6 +203,7 @@
         <module>presto-hana</module>
         <module>presto-openapi</module>
         <module>presto-native-sidecar-plugin</module>
+        <module>presto-base-arrow-flight</module>
     </modules>
 
     <dependencyManagement>
@@ -212,7 +213,7 @@
                 <artifactId>netty-handler</artifactId>
                 <version>4.1.107.Final</version>
             </dependency>
-            
+
             <dependency>
                 <groupId>com.facebook.presto</groupId>
                 <artifactId>presto-testing-docker</artifactId>
