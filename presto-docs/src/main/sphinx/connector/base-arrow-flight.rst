@@ -6,7 +6,7 @@ This connector allows querying multiple data sources that are supported by an Ar
 Apache Arrow enhances performance and efficiency in data-intensive applications through its columnar memory layout, zero-copy reads, vectorized execution, cross-language interoperability, rich data type support, and optimization for modern hardware. These features collectively reduce overhead, improve data processing speeds, and facilitate seamless data exchange between different systems and languages.
 
 Getting Started with base-arrow-module: Essential Abstract Methods for Developers
---------------
+---------------------------------------------------------------------------------
 To utilize the base-arrow-module, you need to implement certain abstract methods that are specific to your use case. Below are the required classes and their purposes:
 
 * ``ArrowFlightClientHandler.java``
@@ -49,7 +49,7 @@ connection properties as appropriate for your setup:
         data-source.port=<PORT>
         data-source.ssl=<TRUE/FALSE>
 
-        Add other properties that are required for your Flight server to connect.
+Add other properties that are required for your Flight server to connect.
 
 ========================================== ==============================================================
 Property Name                               Description
@@ -71,7 +71,7 @@ Property Name                               Description
 Querying Arrow-Flight
 ---------------------
 
-The Arrow-Flight connector provides schema for each supported *databases*.
+The Arrow-Flight connector provides schema for each supported *database*.
 Example for MariaDB is shown below.
 To see the available schemas, run ``SHOW SCHEMAS``::
 
@@ -97,7 +97,7 @@ that catalog name instead of ``arrowmariadb`` in the above examples.
 
 
 Arrow-Flight Connector Limitations
----------------------------------
+----------------------------------
 
 * SELECT and DESCRIBE queries are supported by this connector template. Implementing modules can add support for additional features.
 
