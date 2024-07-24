@@ -18,8 +18,6 @@ import com.facebook.presto.common.type.VarcharType;
 import com.facebook.presto.spi.ColumnMetadata;
 import org.testng.annotations.Test;
 
-import java.util.Optional;
-
 import static org.testng.Assert.assertEquals;
 
 public class TestArrowColumnHandle
@@ -29,13 +27,11 @@ public class TestArrowColumnHandle
     {
         String columnName = "TestColumn";
         Type columnType = VarcharType.createUnboundedVarcharType();
-        ArrowTypeHandle arrowTypeHandle = new ArrowTypeHandle(1, "VARCHAR", 255, 0, Optional.empty());
 
-        ArrowColumnHandle columnHandle = new ArrowColumnHandle(columnName, columnType, arrowTypeHandle);
+        ArrowColumnHandle columnHandle = new ArrowColumnHandle(columnName, columnType);
 
         assertEquals(columnHandle.getColumnName(), columnName);
         assertEquals(columnHandle.getColumnType(), columnType);
-        assertEquals(columnHandle.getArrowTypeHandle(), arrowTypeHandle);
     }
 
     @Test
@@ -43,9 +39,8 @@ public class TestArrowColumnHandle
     {
         String columnName = "testcolumn";
         Type columnType = VarcharType.createUnboundedVarcharType();
-        ArrowTypeHandle arrowTypeHandle = new ArrowTypeHandle(1, "VARCHAR", 255, 0, Optional.empty());
 
-        ArrowColumnHandle columnHandle = new ArrowColumnHandle(columnName, columnType, arrowTypeHandle);
+        ArrowColumnHandle columnHandle = new ArrowColumnHandle(columnName, columnType);
         ColumnMetadata columnMetadata = columnHandle.getColumnMetadata();
 
         assertEquals(columnMetadata.getName(), columnName);

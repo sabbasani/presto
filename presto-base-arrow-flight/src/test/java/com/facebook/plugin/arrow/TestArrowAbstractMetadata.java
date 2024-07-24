@@ -90,8 +90,8 @@ public class TestArrowAbstractMetadata
         Constraint<ColumnHandle> trueConstraint = Constraint.alwaysTrue();
 
         Set<ColumnHandle> desiredColumns = new HashSet<>();
-        desiredColumns.add(new ArrowColumnHandle("column1", IntegerType.INTEGER, new ArrowTypeHandle(1, "typename", 10, 3, Optional.empty())));
-        desiredColumns.add(new ArrowColumnHandle("column2", VarcharType.VARCHAR, new ArrowTypeHandle(2, "typename", 10, 3, Optional.empty())));
+        desiredColumns.add(new ArrowColumnHandle("column1", IntegerType.INTEGER));
+        desiredColumns.add(new ArrowColumnHandle("column2", VarcharType.VARCHAR));
 
         // Call the method under test
         ArrowAbstractMetadata metadata = mock(ArrowAbstractMetadata.class);

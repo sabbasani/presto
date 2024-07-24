@@ -43,6 +43,7 @@ public abstract class ArrowFlightClientHandler
     private Optional<InputStream> trustedCertificate = Optional.empty();
     private TimerTask closeTask;
     private static final int TIMER_DURATION_IN_MINUTES = 30;
+    private RootAllocator allocator;
 
     public ArrowFlightClientHandler(ArrowFlightConfig config)
     {
@@ -55,7 +56,7 @@ public abstract class ArrowFlightClientHandler
             return;
         }
         try {
-            RootAllocator allocator = new RootAllocator(Long.MAX_VALUE);
+            allocator = new RootAllocator(Long.MAX_VALUE);
             Optional<InputStream> trustedCertificate = Optional.empty();
 
             Location location;
@@ -83,7 +84,7 @@ public abstract class ArrowFlightClientHandler
             }
 
             FlightClient flightClient = flightClientBuilder.build();
-            this.arrowFlightClient = new ArrowFlightClient(flightClient, trustedCertificate);
+            this.arrowFlightClient = new ArrowFlightClient(flightClient, trustedCertificate, allocator);
             isClientClosed.set(false);
         }
         catch (Exception ex) {
@@ -96,7 +97,7 @@ public abstract class ArrowFlightClientHandler
         return config;
     }
 
-    public ArrowFlightClient getClient(Optional<String> uri)
+    public synchronized ArrowFlightClient getClient(Optional<String> uri)
     {
         if (isClientClosed.get()) {
             logger.info("Reinitialize the client if closed or not initialized");
@@ -116,7 +117,7 @@ public abstract class ArrowFlightClientHandler
             CredentialCallOption auth = this.getCallOptions(connectorSession);
             FlightDescriptor descriptor = FlightDescriptor.command(request.getCommand());
             logger.debug("Fetching flight info");
-            FlightInfo flightInfo = client.getFlightClient().getInfo(descriptor, ArrowFlightConstants.CALL_OPTIONS_TIMEOUT, auth);
+            FlightInfo flightInfo = client.getFlightClient().getInfo(descriptor, auth);
             logger.debug("got flight info");
             return flightInfo;
         }
@@ -127,7 +128,7 @@ public abstract class ArrowFlightClientHandler
 
     protected abstract CredentialCallOption getCallOptions(ConnectorSession connectorSession);
 
-    public void close() throws Exception
+    public synchronized void close() throws Exception
     {
         if (arrowFlightClient != null) {
             arrowFlightClient.close();

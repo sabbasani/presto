@@ -176,7 +176,7 @@ public class ArrowQueryBuilder
     private void bindValue(Object value, ArrowColumnHandle columnHandle, List<TypeAndValue> accumulator)
     {
         Type type = columnHandle.getColumnType();
-        accumulator.add(new TypeAndValue(type, value, columnHandle.getArrowTypeHandle()));
+        accumulator.add(new TypeAndValue(type, value));
     }
 
     private String parameterValueToString(Type type, Object value)
@@ -204,13 +204,11 @@ public class ArrowQueryBuilder
     {
         private final Type type;
         private final Object value;
-        private final ArrowTypeHandle typeHandle;
 
-        public TypeAndValue(Type type, Object value, ArrowTypeHandle typeHandle)
+        public TypeAndValue(Type type, Object value)
         {
             this.type = requireNonNull(type, "type is null");
             this.value = requireNonNull(value, "value is null");
-            this.typeHandle = typeHandle;
         }
 
         public Type getType()
@@ -221,11 +219,6 @@ public class ArrowQueryBuilder
         public Object getValue()
         {
             return value;
-        }
-
-        public ArrowTypeHandle getTypeHandle()
-        {
-            return typeHandle;
         }
     }
 
@@ -265,7 +258,7 @@ public class ArrowQueryBuilder
                         .build();
                 accumulator.addAll(additionalPredicate.get().getBoundConstantValues().stream()
                         //see https://github.com/Ahana-Inc/prestodb/pull/144#discussion_r895353628 for details.
-                        .map(constantExpression -> new TypeAndValue(constantExpression.getType(), constantExpression.getValue(), null))
+                        .map(constantExpression -> new TypeAndValue(constantExpression.getType(), constantExpression.getValue()))
                         .collect(ImmutableList.toImmutableList()));
             }
             if (!clauses.isEmpty()) {

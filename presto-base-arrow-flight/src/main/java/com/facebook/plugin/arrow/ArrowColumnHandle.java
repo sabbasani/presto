@@ -26,17 +26,15 @@ public class ArrowColumnHandle
 {
     private final String columnName;
     private final Type columnType;
-    private final ArrowTypeHandle arrowTypeHandle;
 
     @JsonCreator
     public ArrowColumnHandle(
             @JsonProperty("columnName") String columnName,
-            @JsonProperty("columnType") Type columnType,
-            @JsonProperty("jdbcTypeHandle") ArrowTypeHandle arrowTypeHandle)
+            @JsonProperty("columnType") Type columnType)
+
     {
         this.columnName = requireNonNull(columnName, "columnName is null");
         this.columnType = requireNonNull(columnType, "type is null");
-        this.arrowTypeHandle = arrowTypeHandle;
     }
 
     @JsonProperty
@@ -49,11 +47,6 @@ public class ArrowColumnHandle
     public Type getColumnType()
     {
         return columnType;
-    }
-
-    public ArrowTypeHandle getArrowTypeHandle()
-    {
-        return arrowTypeHandle;
     }
 
     public ColumnMetadata getColumnMetadata()

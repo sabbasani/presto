@@ -35,8 +35,8 @@ public class TestArrowQueryBuilder
         String schema = "test_schema";
         String table = "test_table";
         List<ArrowColumnHandle> columns = ImmutableList.of(
-                new ArrowColumnHandle("col1", BigintType.BIGINT, new ArrowTypeHandle(1, "type", 0, 0, Optional.empty())),
-                new ArrowColumnHandle("col2", VarcharType.VARCHAR, new ArrowTypeHandle(2, "type", 0, 0, Optional.empty())));
+                new ArrowColumnHandle("col1", BigintType.BIGINT),
+                new ArrowColumnHandle("col2", VarcharType.VARCHAR));
         Map<String, String> columnExpressions = new HashMap<>();
         columnExpressions.put("col1", "SUM(col1)");
         columnExpressions.put("col2", "UPPER(col2)");

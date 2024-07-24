@@ -69,9 +69,9 @@ public abstract class ArrowAbstractMetadata
         this.clientHandler = requireNonNull(clientHandler);
     }
 
-    protected abstract String getDBSpecificSchemaName(ArrowFlightConfig config, String schemaName);
+    protected abstract String getDataSourceSpecificSchemaName(ArrowFlightConfig config, String schemaName);
 
-    protected abstract String getDBSpecificTableName(ArrowFlightConfig config, String tableName);
+    protected abstract String getDataSourceSpecificTableName(ArrowFlightConfig config, String tableName);
 
     @Override
     public ConnectorTableHandle getTableHandle(ConnectorSession session, SchemaTableName tableName)
@@ -93,10 +93,10 @@ public abstract class ArrowAbstractMetadata
     public List<Field> getColumnsList(String schema, String table, ConnectorSession connectorSession)
     {
         try {
-            String dbSpecificSchemaName = getDBSpecificSchemaName(config, schema);
-            String dbSpecificTableName = getDBSpecificTableName(config, table);
+            String dataSourceSpecificSchemaName = getDataSourceSpecificSchemaName(config, schema);
+            String dataSourceSpecificTableName = getDataSourceSpecificTableName(config, table);
             ArrowFlightRequest request = getArrowFlightRequest(clientHandler.getConfig(), Optional.empty(),
-                    dbSpecificSchemaName, dbSpecificTableName);
+                    dataSourceSpecificSchemaName, dataSourceSpecificTableName);
 
             FlightInfo flightInfo = clientHandler.getFlightInfo(request, connectorSession);
             List<Field> fields = flightInfo.getSchema().getFields();
@@ -114,11 +114,10 @@ public abstract class ArrowAbstractMetadata
 
         String schemaValue = ((ArrowTableHandle) tableHandle).getSchema();
         String tableValue = ((ArrowTableHandle) tableHandle).getTable();
-        String dbSpecificSchemaValue = getDBSpecificSchemaName(config, schemaValue);
-        String dBSpecificTableName = getDBSpecificTableName(config, tableValue);
-        List<Field> columnList = getColumnsList(dbSpecificSchemaValue, dBSpecificTableName, session);
+        String dataSourceSpecificSchemaValue = getDataSourceSpecificSchemaName(config, schemaValue);
+        String dataSourceSpecificTableName = getDataSourceSpecificTableName(config, tableValue);
+        List<Field> columnList = getColumnsList(dataSourceSpecificSchemaValue, dataSourceSpecificTableName, session);
 
-        ArrowTypeHandle typeHandle = new ArrowTypeHandle(1, "typename", 10, 3, Optional.empty());
         for (Field field : columnList) {
             String columnName = field.getName();
             logger.debug("The value of the flight columnName is:- %s", columnName);
@@ -127,16 +126,16 @@ public abstract class ArrowAbstractMetadata
                     ArrowType.Int intType = (ArrowType.Int) field.getType();
                     switch (intType.getBitWidth()) {
                         case 64:
-                            column.put(columnName, new ArrowColumnHandle(columnName, BigintType.BIGINT, typeHandle));
+                            column.put(columnName, new ArrowColumnHandle(columnName, BigintType.BIGINT));
                             break;
                         case 32:
-                            column.put(columnName, new ArrowColumnHandle(columnName, IntegerType.INTEGER, typeHandle));
+                            column.put(columnName, new ArrowColumnHandle(columnName, IntegerType.INTEGER));
                             break;
                         case 16:
-                            column.put(columnName, new ArrowColumnHandle(columnName, SmallintType.SMALLINT, typeHandle));
+                            column.put(columnName, new ArrowColumnHandle(columnName, SmallintType.SMALLINT));
                             break;
                         case 8:
-                            column.put(columnName, new ArrowColumnHandle(columnName, TinyintType.TINYINT, typeHandle));
+                            column.put(columnName, new ArrowColumnHandle(columnName, TinyintType.TINYINT));
                             break;
                         default:
                             throw new ArrowException(ARROW_FLIGHT_ERROR, "Invalid bit width " + intType.getBitWidth());
@@ -145,26 +144,26 @@ public abstract class ArrowAbstractMetadata
                 case Binary:
                 case LargeBinary:
                 case FixedSizeBinary:
-                    column.put(columnName, new ArrowColumnHandle(columnName, VarbinaryType.VARBINARY, typeHandle));
+                    column.put(columnName, new ArrowColumnHandle(columnName, VarbinaryType.VARBINARY));
                     break;
                 case Date:
-                    column.put(columnName, new ArrowColumnHandle(columnName, DateType.DATE, typeHandle));
+                    column.put(columnName, new ArrowColumnHandle(columnName, DateType.DATE));
                     break;
                 case Timestamp:
-                    column.put(columnName, new ArrowColumnHandle(columnName, TimestampType.TIMESTAMP, typeHandle));
+                    column.put(columnName, new ArrowColumnHandle(columnName, TimestampType.TIMESTAMP));
                     break;
                 case Utf8:
                 case LargeUtf8:
-                    column.put(columnName, new ArrowColumnHandle(columnName, VarcharType.VARCHAR, typeHandle));
+                    column.put(columnName, new ArrowColumnHandle(columnName, VarcharType.VARCHAR));
                     break;
                 case FloatingPoint:
                     ArrowType.FloatingPoint floatingPoint = (ArrowType.FloatingPoint) field.getType();
                     switch (floatingPoint.getPrecision()) {
                         case SINGLE:
-                            column.put(columnName, new ArrowColumnHandle(columnName, RealType.REAL, typeHandle));
+                            column.put(columnName, new ArrowColumnHandle(columnName, RealType.REAL));
                             break;
                         case DOUBLE:
-                            column.put(columnName, new ArrowColumnHandle(columnName, DoubleType.DOUBLE, typeHandle));
+                            column.put(columnName, new ArrowColumnHandle(columnName, DoubleType.DOUBLE));
                             break;
                         default:
                             throw new ArrowException(ARROW_FLIGHT_ERROR, "Invalid floating point precision " + floatingPoint.getPrecision());
@@ -174,13 +173,13 @@ public abstract class ArrowAbstractMetadata
                     ArrowType.Decimal decimalType = (ArrowType.Decimal) field.getType();
                     int precision = decimalType.getPrecision();
                     int scale = decimalType.getScale();
-                    column.put(columnName, new ArrowColumnHandle(columnName, DecimalType.createDecimalType(precision, scale), typeHandle));
+                    column.put(columnName, new ArrowColumnHandle(columnName, DecimalType.createDecimalType(precision, scale)));
                     break;
                 case Bool:
-                    column.put(columnName, new ArrowColumnHandle(columnName, BooleanType.BOOLEAN, typeHandle));
+                    column.put(columnName, new ArrowColumnHandle(columnName, BooleanType.BOOLEAN));
                     break;
                 case Time:
-                    column.put(columnName, new ArrowColumnHandle(columnName, TimeType.TIME, typeHandle));
+                    column.put(columnName, new ArrowColumnHandle(columnName, TimeType.TIME));
                     break;
                 default:
                     throw new UnsupportedOperationException("The data type " + field.getType().getTypeID() + " is not supported.");

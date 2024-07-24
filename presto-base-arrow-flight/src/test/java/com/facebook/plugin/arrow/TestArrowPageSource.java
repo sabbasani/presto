@@ -63,7 +63,7 @@ public class TestArrowPageSource
         ArrowFlightClient mockArrowFlightClient = mock(ArrowFlightClient.class);
         when(mockClientHandler.getClient(any(Optional.class))).thenReturn(mockArrowFlightClient);
         when(mockArrowFlightClient.getFlightClient()).thenReturn(mockFlightClient);
-        when(mockFlightClient.getStream(any(Ticket.class), any(), any())).thenReturn(mockFlightStream);
+        when(mockFlightClient.getStream(any(Ticket.class), any())).thenReturn(mockFlightStream);
     }
 
     @Test

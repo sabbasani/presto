@@ -14,6 +14,7 @@
 package com.facebook.plugin.arrow;
 
 import org.apache.arrow.flight.FlightClient;
+import org.apache.arrow.memory.RootAllocator;
 import org.testng.annotations.Test;
 
 import java.io.InputStream;
@@ -34,8 +35,9 @@ public class TestArrowFlightClient
         FlightClient flightClient = mock(FlightClient.class);
         InputStream certificateStream = mock(InputStream.class);
         Optional<InputStream> trustedCertificate = Optional.of(certificateStream);
+        RootAllocator allocator = mock(RootAllocator.class);
 
-        ArrowFlightClient arrowFlightClient = new ArrowFlightClient(flightClient, trustedCertificate);
+        ArrowFlightClient arrowFlightClient = new ArrowFlightClient(flightClient, trustedCertificate, allocator);
 
         assertEquals(arrowFlightClient.getFlightClient(), flightClient);
         assertTrue(arrowFlightClient.getTrustedCertificate().isPresent());
@@ -47,8 +49,8 @@ public class TestArrowFlightClient
     {
         FlightClient flightClient = mock(FlightClient.class);
         Optional<InputStream> trustedCertificate = Optional.empty();
-
-        ArrowFlightClient arrowFlightClient = new ArrowFlightClient(flightClient, trustedCertificate);
+        RootAllocator allocator = mock(RootAllocator.class);
+        ArrowFlightClient arrowFlightClient = new ArrowFlightClient(flightClient, trustedCertificate, allocator);
 
         assertEquals(arrowFlightClient.getFlightClient(), flightClient);
         assertFalse(arrowFlightClient.getTrustedCertificate().isPresent());
@@ -60,8 +62,9 @@ public class TestArrowFlightClient
         FlightClient flightClient = mock(FlightClient.class);
         InputStream certificateStream = mock(InputStream.class);
         Optional<InputStream> trustedCertificate = Optional.of(certificateStream);
+        RootAllocator allocator = mock(RootAllocator.class);
 
-        ArrowFlightClient arrowFlightClient = new ArrowFlightClient(flightClient, trustedCertificate);
+        ArrowFlightClient arrowFlightClient = new ArrowFlightClient(flightClient, trustedCertificate, allocator);
 
         arrowFlightClient.close();
 
@@ -74,8 +77,9 @@ public class TestArrowFlightClient
     {
         FlightClient flightClient = mock(FlightClient.class);
         Optional<InputStream> trustedCertificate = Optional.empty();
+        RootAllocator allocator = mock(RootAllocator.class);
 
-        ArrowFlightClient arrowFlightClient = new ArrowFlightClient(flightClient, trustedCertificate);
+        ArrowFlightClient arrowFlightClient = new ArrowFlightClient(flightClient, trustedCertificate, allocator);
 
         arrowFlightClient.close();
 

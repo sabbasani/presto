@@ -90,8 +90,7 @@ public class ArrowPageSource
         try {
             Optional<String> uri = split.getLocationUrls().isEmpty() ? Optional.empty() : Optional.of(split.getLocationUrls().get(0));
             flightClient = clientHandler.getClient(uri);
-            flightStream = flightClient.getFlightClient().getStream(new Ticket(ticket),
-                    ArrowFlightConstants.CALL_OPTIONS_TIMEOUT, clientHandler.getCallOptions(connectorSession));
+            flightStream = flightClient.getFlightClient().getStream(new Ticket(ticket), clientHandler.getCallOptions(connectorSession));
         }
         catch (FlightRuntimeException e) {
             throw new ArrowException(ARROW_FLIGHT_ERROR, e.getMessage(), e);
