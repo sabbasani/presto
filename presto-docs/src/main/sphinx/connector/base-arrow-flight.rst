@@ -24,6 +24,9 @@ To utilize the base-arrow-module, you need to implement certain abstract methods
 * ``ArrowPlugin.java``
   Register your connector name by extending the ArrowPlugin class.
 
+* ``ArrowFlightRequest``
+  The ``getCommand`` method in the ``ArrowFlightRequest`` interface is responsible for serializing a flight request object into a JSON byte array.
+
 Configuration
 -------------
 To configure the Arrow connector, create a catalog file
