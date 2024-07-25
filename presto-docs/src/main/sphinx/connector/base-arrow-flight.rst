@@ -25,7 +25,7 @@ To utilize the base-arrow-module, you need to implement certain abstract methods
   Register your connector name by extending the ArrowPlugin class.
 
 * ``ArrowFlightRequest``
-  The ``getCommand`` method in the ``ArrowFlightRequest`` interface is responsible for serializing a flight request object into a byte array.
+  The ``getCommand`` method in the ``ArrowFlightRequest`` interface should return a byte array for the flight request.
 
 Configuration
 -------------
