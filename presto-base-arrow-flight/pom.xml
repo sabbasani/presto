@@ -17,7 +17,7 @@
         <grpc.version>1.63.0</grpc.version>
         <dep.okhttp.version>4.10.0</dep.okhttp.version>
         <arrow.version>17.0.0</arrow.version>
-        <netty.version>4.1.100.Final</netty.version>
+        <netty.version>4.1.110.Final</netty.version>
 
     </properties>
 
@@ -115,6 +115,13 @@
         </dependency>
 
         <dependency>
+            <groupId>org.apache.arrow</groupId>
+            <artifactId>arrow-jdbc</artifactId>
+            <version>17.0.0</version>
+        </dependency>
+
+
+        <dependency>
             <groupId>io.netty</groupId>
             <artifactId>netty-codec-http2</artifactId>
             <version>${netty.version}</version>
@@ -198,6 +205,12 @@
         </dependency>
 
         <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-core</artifactId>
+            <scope>provided</scope>
+        </dependency>
+
+        <dependency>
             <groupId>org.apache.arrow</groupId>
             <artifactId>flight-core</artifactId>
             <version>${arrow.version}</version>
@@ -207,6 +220,24 @@
                     <artifactId>j2objc-annotations</artifactId>
                 </exclusion>
             </exclusions>
+        </dependency>
+        <dependency>
+            <groupId>com.facebook.presto</groupId>
+            <artifactId>presto-main</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>com.facebook.presto</groupId>
+            <artifactId>presto-tests</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>com.h2database</groupId>
+            <artifactId>h2</artifactId>
+            <version>2.2.220</version> <!-- Ensure this version is correct and compatible with your setup -->
+            <scope>test</scope>
         </dependency>
 
     </dependencies>
@@ -292,7 +323,6 @@
                 <version>4.1.110.Final</version>
             </dependency>
 
-
             <dependency>
                 <groupId>io.netty</groupId>
                 <artifactId>netty-handler</artifactId>
@@ -315,6 +345,12 @@
                 <groupId>org.objenesis</groupId>
                 <artifactId>objenesis</artifactId>
                 <version>3.3</version>
+            </dependency>
+
+            <dependency>
+                <groupId>org.jetbrains.kotlin</groupId>
+                <artifactId>kotlin-stdlib-common</artifactId>
+                <version>1.6.20</version>
             </dependency>
 
             <dependency>
@@ -362,6 +398,7 @@
                     </ignoredClassPatterns>
                     <ignoredResourcePatterns>
                         <ignoredResourcePattern>arrow-git.properties</ignoredResourcePattern>
+                        <ignoredResourcePattern>about.html</ignoredResourcePattern>
                     </ignoredResourcePatterns>
                 </configuration>
                 <executions>

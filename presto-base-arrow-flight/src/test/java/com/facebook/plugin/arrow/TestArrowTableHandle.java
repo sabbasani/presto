@@ -19,7 +19,7 @@ import org.testng.annotations.Test;
 import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertNotNull;
 
-public class ArrowTableHandleTest
+public class TestArrowTableHandle
 {
     @Test
     public void testConstructorAndGetters()

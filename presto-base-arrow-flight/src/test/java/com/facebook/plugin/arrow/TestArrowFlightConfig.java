@@ -13,43 +13,101 @@
  */
 package com.facebook.plugin.arrow;
 
-import com.facebook.airlift.configuration.testing.ConfigAssertions;
-import com.google.common.collect.ImmutableMap;
-import org.testng.annotations.Test;
-
-import java.util.Map;
+import com.facebook.airlift.configuration.Config;
+import com.facebook.airlift.configuration.ConfigSecuritySensitive;
 
 public class TestArrowFlightConfig
 {
-    @Test
-    public void testDefaults()
-    {
-        ConfigAssertions.assertRecordedDefaults(ConfigAssertions.recordDefaults(ArrowFlightConfig.class)
-                .setFlightServerName(null)
-                .setVerifyServer(null)
-                .setFlightServerSSLCertificate(null)
-                .setArrowFlightServerSslEnabled(null)
-                .setArrowFlightPort(null));
+    private String host; // non-static field
+    private String database; // non-static field
+    private String username; // non-static field
+    private String password; // non-static field
+    private String name; // non-static field
+    private Integer port; // non-static field
+    private Boolean ssl;
+
+    public String getDataSourceHost()
+    { // non-static getter
+        return host;
     }
 
-    @Test
-    public void testExplicitPropertyMappings()
-    {
-        Map<String, String> properties = new ImmutableMap.Builder<String, String>()
-                .put("arrow-flight.server", "127.0.0.1")
-                .put("arrow-flight.server.verify", "true")
-                .put("arrow-flight.server-ssl-certificate", "cert")
-                .put("arrow-flight.server-ssl-enabled", "true")
-                .put("arrow-flight.server.port", "443")
-                .build();
+    public String getDataSourceDatabase()
+    { // non-static getter
+        return database;
+    }
 
-        ArrowFlightConfig expected = new ArrowFlightConfig()
-                .setFlightServerName("127.0.0.1")
-                .setVerifyServer(true)
-                .setFlightServerSSLCertificate("cert")
-                .setArrowFlightServerSslEnabled(true)
-                .setArrowFlightPort(443);
+    public String getDataSourceUsername()
+    { // non-static getter
+        return username;
+    }
 
-        ConfigAssertions.assertFullMapping(properties, expected);
+    public String getDataSourcePassword()
+    { // non-static getter
+        return password;
+    }
+
+    public String getDataSourceName()
+    { // non-static getter
+        return name;
+    }
+
+    public Integer getDataSourcePort()
+    { // non-static getter
+        return port;
+    }
+
+    public Boolean getDataSourceSSL()
+    { // non-static getter
+        return ssl;
+    }
+
+    @Config("data-source.host")
+    public TestArrowFlightConfig setDataSourceHost(String host)
+    { // non-static setter
+        this.host = host;
+        return this;
+    }
+
+    @Config("data-source.database")
+    public TestArrowFlightConfig setDataSourceDatabase(String database)
+    { // non-static setter
+        this.database = database;
+        return this;
+    }
+
+    @Config("data-source.username")
+    public TestArrowFlightConfig setDataSourceUsername(String username)
+    { // non-static setter
+        this.username = username;
+        return this;
+    }
+
+    @Config("data-source.password")
+    @ConfigSecuritySensitive
+    public TestArrowFlightConfig setDataSourcePassword(String password)
+    { // non-static setter
+        this.password = password;
+        return this;
+    }
+
+    @Config("data-source.name")
+    public TestArrowFlightConfig setDataSourceName(String name)
+    { // non-static setter
+        this.name = name;
+        return this;
+    }
+
+    @Config("data-source.port")
+    public TestArrowFlightConfig setDataSourcePort(Integer port)
+    { // non-static setter
+        this.port = port;
+        return this;
+    }
+
+    @Config("data-source.ssl")
+    public TestArrowFlightConfig setDataSourceSSL(Boolean ssl)
+    { // non-static setter
+        this.ssl = ssl;
+        return this;
     }
 }
