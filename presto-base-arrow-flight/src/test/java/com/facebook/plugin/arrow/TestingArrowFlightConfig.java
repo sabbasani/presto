@@ -16,7 +16,7 @@ package com.facebook.plugin.arrow;
 import com.facebook.airlift.configuration.Config;
 import com.facebook.airlift.configuration.ConfigSecuritySensitive;
 
-public class TestArrowFlightConfig
+public class TestingArrowFlightConfig
 {
     private String host; // non-static field
     private String database; // non-static field
@@ -62,21 +62,21 @@ public class TestArrowFlightConfig
     }
 
     @Config("data-source.host")
-    public TestArrowFlightConfig setDataSourceHost(String host)
+    public TestingArrowFlightConfig setDataSourceHost(String host)
     { // non-static setter
         this.host = host;
         return this;
     }
 
     @Config("data-source.database")
-    public TestArrowFlightConfig setDataSourceDatabase(String database)
+    public TestingArrowFlightConfig setDataSourceDatabase(String database)
     { // non-static setter
         this.database = database;
         return this;
     }
 
     @Config("data-source.username")
-    public TestArrowFlightConfig setDataSourceUsername(String username)
+    public TestingArrowFlightConfig setDataSourceUsername(String username)
     { // non-static setter
         this.username = username;
         return this;
@@ -84,28 +84,28 @@ public class TestArrowFlightConfig
 
     @Config("data-source.password")
     @ConfigSecuritySensitive
-    public TestArrowFlightConfig setDataSourcePassword(String password)
+    public TestingArrowFlightConfig setDataSourcePassword(String password)
     { // non-static setter
         this.password = password;
         return this;
     }
 
     @Config("data-source.name")
-    public TestArrowFlightConfig setDataSourceName(String name)
+    public TestingArrowFlightConfig setDataSourceName(String name)
     { // non-static setter
         this.name = name;
         return this;
     }
 
     @Config("data-source.port")
-    public TestArrowFlightConfig setDataSourcePort(Integer port)
+    public TestingArrowFlightConfig setDataSourcePort(Integer port)
     { // non-static setter
         this.port = port;
         return this;
     }
 
     @Config("data-source.ssl")
-    public TestArrowFlightConfig setDataSourceSSL(Boolean ssl)
+    public TestingArrowFlightConfig setDataSourceSSL(Boolean ssl)
     { // non-static setter
         this.ssl = ssl;
         return this;

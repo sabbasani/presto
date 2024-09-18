@@ -54,7 +54,7 @@ import static java.lang.String.format;
 import static java.util.Objects.requireNonNull;
 import static java.util.stream.Collectors.joining;
 
-public class TestArrowQueryBuilder
+public class TestingArrowQueryBuilder
 {
     // not all databases support booleans, so use 1=1 and 1=0 instead
     private static final String ALWAYS_TRUE = "1=1";

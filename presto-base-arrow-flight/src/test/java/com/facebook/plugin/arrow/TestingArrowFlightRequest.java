@@ -20,7 +20,7 @@ import com.fasterxml.jackson.databind.SerializationFeature;
 import java.nio.charset.StandardCharsets;
 import java.util.Optional;
 
-public class TestArrowFlightRequest
+public class TestingArrowFlightRequest
         implements ArrowFlightRequest
 {
     private final String schema;
@@ -29,9 +29,9 @@ public class TestArrowFlightRequest
     private final ArrowFlightConfig config;
     private final int noOfPartitions;
 
-    private final TestArrowFlightConfig testconfig;
+    private final TestingArrowFlightConfig testconfig;
 
-    public TestArrowFlightRequest(ArrowFlightConfig config, TestArrowFlightConfig testconfig, String schema, String table, Optional<String> query, int noOfPartitions)
+    public TestingArrowFlightRequest(ArrowFlightConfig config, TestingArrowFlightConfig testconfig, String schema, String table, Optional<String> query, int noOfPartitions)
     {
         this.config = config;
         this.schema = schema;
@@ -41,7 +41,7 @@ public class TestArrowFlightRequest
         this.noOfPartitions = noOfPartitions;
     }
 
-    public TestArrowFlightRequest(ArrowFlightConfig config, String schema, int noOfPartitions, TestArrowFlightConfig testconfig)
+    public TestingArrowFlightRequest(ArrowFlightConfig config, String schema, int noOfPartitions, TestingArrowFlightConfig testconfig)
     {
         this.schema = schema;
         this.table = null;
@@ -66,9 +66,9 @@ public class TestArrowFlightRequest
         return query;
     }
 
-    public TestRequestData build()
+    public TestingRequestData build()
     {
-        TestRequestData requestData = new TestRequestData();
+        TestingRequestData requestData = new TestingRequestData();
         requestData.setConnectionProperties(getConnectionProperties());
         requestData.setInteractionProperties(createInteractionProperties());
         return requestData;
@@ -88,9 +88,9 @@ public class TestArrowFlightRequest
         }
     }
 
-    private TestConnectionProperties getConnectionProperties()
+    private TestingConnectionProperties getConnectionProperties()
     {
-        TestConnectionProperties properties = new TestConnectionProperties();
+        TestingConnectionProperties properties = new TestingConnectionProperties();
         properties.database = testconfig.getDataSourceDatabase();
         properties.host = testconfig.getDataSourceHost();
         properties.port = testconfig.getDataSourcePort();
@@ -99,9 +99,9 @@ public class TestArrowFlightRequest
         return properties;
     }
 
-    private TestInteractionProperties createInteractionProperties()
+    private TestingInteractionProperties createInteractionProperties()
     {
-        TestInteractionProperties interactionProperties = new TestInteractionProperties();
+        TestingInteractionProperties interactionProperties = new TestingInteractionProperties();
         if (getQuery().isPresent()) {
             interactionProperties.setSelectStatement(getQuery().get());
         }

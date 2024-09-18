@@ -52,7 +52,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-public class TestArrowServer
+public class TestingArrowServer
         implements FlightProducer
 {
     private final BufferAllocator allocator;
@@ -60,12 +60,12 @@ public class TestArrowServer
 
     private static Connection connection;
 
-    private static final Logger logger = Logger.get(TestArrowServer.class);
+    private static final Logger logger = Logger.get(TestingArrowServer.class);
 
-    public TestArrowServer(BufferAllocator allocator) throws Exception
+    public TestingArrowServer(BufferAllocator allocator) throws Exception
     {
         this.allocator = allocator;
-        TestH2DatabaseSetup.setup();
+        TestingH2DatabaseSetup.setup();
         this.connection = DriverManager.getConnection("jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1", "sa", "");
     }
 

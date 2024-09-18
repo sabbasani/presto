@@ -17,9 +17,9 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.Statement;
 
-public class TestH2DatabaseSetup
+public class TestingH2DatabaseSetup
 {
-    private TestH2DatabaseSetup()
+    private TestingH2DatabaseSetup()
     {
         throw new UnsupportedOperationException("This is a utility class and cannot be instantiated");
     }

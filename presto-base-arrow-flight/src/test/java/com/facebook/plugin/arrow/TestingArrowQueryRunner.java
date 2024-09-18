@@ -22,9 +22,9 @@ import java.util.Map;
 
 import static com.facebook.presto.testing.TestingSession.testSessionBuilder;
 
-public class TestArrowQueryRunner
+public class TestingArrowQueryRunner
 {
-    private TestArrowQueryRunner() {}
+    private TestingArrowQueryRunner() {}
 
     public static LocalQueryRunner createQueryRunner()
     {
@@ -41,7 +41,7 @@ public class TestArrowQueryRunner
         LocalQueryRunner queryRunner = new LocalQueryRunner(session);
 
         try {
-            ArrowConnectorFactory connectorFactory = new ArrowConnectorFactory(factoryClass.getSimpleName(), new TestArrowModule(), TestArrowQueryRunner.class.getClassLoader());
+            ArrowConnectorFactory connectorFactory = new ArrowConnectorFactory(factoryClass.getSimpleName(), new TestingArrowModule(), TestingArrowQueryRunner.class.getClassLoader());
             ImmutableMap.Builder<String, String> properties = ImmutableMap.<String, String>builder()
                     .putAll(catalogProperties)
                     .put("arrow-flight.server", "127.0.0.1")

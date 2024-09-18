@@ -44,12 +44,12 @@ public class TestArrowFlightSmoke
 
         allocator = new RootAllocator(Long.MAX_VALUE);
         serverLocation = Location.forGrpcTls("127.0.0.1", 9443);
-        server = FlightServer.builder(allocator, serverLocation, new TestArrowServer(allocator))
+        server = FlightServer.builder(allocator, serverLocation, new TestingArrowServer(allocator))
                 .useTls(certChainFile, privateKeyFile)
                 .build();
         server.start();
         logger.info("Server listening on port " + server.getPort());
-        queryRunner = TestArrowQueryRunner.createQueryRunner();
+        queryRunner = TestingArrowQueryRunner.createQueryRunner();
     }
 
     @AfterClass(alwaysRun = true)

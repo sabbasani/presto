@@ -13,24 +13,12 @@
  */
 package com.facebook.plugin.arrow;
 
-import com.facebook.presto.spi.ConnectorSession;
-import org.apache.arrow.flight.auth2.BearerCredentialWriter;
-import org.apache.arrow.flight.grpc.CredentialCallOption;
-
-import javax.inject.Inject;
-
-public class TestArrowFlightClientHandler
-        extends ArrowFlightClientHandler
+public class TestingConnectionProperties
 {
-    @Inject
-    public TestArrowFlightClientHandler(ArrowFlightConfig config)
-    {
-        super(config);
-    }
-
-    @Override
-    protected CredentialCallOption getCallOptions(ConnectorSession connectorSession)
-    {
-        return new CredentialCallOption(new BearerCredentialWriter(null));
-    }
+    public String database;
+    public String password;
+    public Integer port;
+    public String host;
+    public Boolean ssl;
+    public String username;
 }
