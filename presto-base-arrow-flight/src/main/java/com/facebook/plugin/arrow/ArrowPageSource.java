@@ -17,6 +17,7 @@ import com.facebook.airlift.log.Logger;
 import com.facebook.presto.common.Page;
 import com.facebook.presto.common.block.Block;
 import com.facebook.presto.common.block.BlockBuilder;
+import com.facebook.presto.common.type.CharType;
 import com.facebook.presto.common.type.DateType;
 import com.facebook.presto.common.type.DecimalType;
 import com.facebook.presto.common.type.Decimals;
@@ -26,6 +27,7 @@ import com.facebook.presto.common.type.Type;
 import com.facebook.presto.common.type.VarcharType;
 import com.facebook.presto.spi.ConnectorPageSource;
 import com.facebook.presto.spi.ConnectorSession;
+import com.google.common.base.CharMatcher;
 import io.airlift.slice.Slice;
 import io.airlift.slice.Slices;
 import org.apache.arrow.flight.FlightRuntimeException;
@@ -55,6 +57,8 @@ import org.apache.arrow.vector.VectorSchemaRoot;
 
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
+import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -68,7 +72,6 @@ public class ArrowPageSource
     private static final Logger logger = Logger.get(ArrowPageSource.class);
     private final ArrowSplit split;
     private final List<ArrowColumnHandle> columnHandles;
-    private final ArrowFlightClientHandler clientHandler;
     private boolean completed;
     private int currentPosition;
     private Optional<VectorSchemaRoot> vectorSchemaRoot = Optional.empty();
@@ -80,7 +83,6 @@ public class ArrowPageSource
     {
         this.columnHandles = columnHandles;
         this.split = split;
-        this.clientHandler = clientHandler;
         getFlightStream(clientHandler, split.getTicket(), connectorSession);
     }
 
@@ -151,9 +153,7 @@ public class ArrowPageSource
     @Override
     public void close()
     {
-        if (vectorSchemaRoot.isPresent()) {
-            vectorSchemaRoot.get().close();
-        }
+        vectorSchemaRoot.ifPresent(VectorSchemaRoot::close);
         if (flightStream != null) {
             try {
                 flightStream.close();
@@ -178,7 +178,7 @@ public class ArrowPageSource
         try {
             Optional<String> uri = (split == null || split.getLocationUrls().isEmpty()) ?
                     Optional.empty() : Optional.of(split.getLocationUrls().get(0));
-            flightClient = clientHandler.getClient(uri);
+            ArrowFlightClient flightClient = clientHandler.getClient(uri);
             flightStream = flightClient.getFlightClient().getStream(new Ticket(ticket), clientHandler.getCallOptions(connectorSession));
         }
         catch (FlightRuntimeException e) {
@@ -222,7 +222,15 @@ public class ArrowPageSource
             return buildBlockFromFloat8Vector((Float8Vector) vector, type);
         }
         else if (vector instanceof VarCharVector) {
-            return buildBlockFromVarCharVector((VarCharVector) vector, type);
+            if (type instanceof CharType) {
+                return buildBlockCharType((VarCharVector) vector, type);
+            }
+            else if (type instanceof TimeType) {
+                return buildBlockTimeType((VarCharVector) vector, type);
+            }
+            else {
+                return buildBlockFromVarCharVector((VarCharVector) vector, type);
+            }
         }
         else if (vector instanceof VarBinaryVector) {
             return buildBlockFromVarBinaryVector((VarBinaryVector) vector, type);
@@ -567,6 +575,38 @@ public class ArrowPageSource
             else {
                 long value = vector.get(i);
                 long millis = TimeUnit.SECONDS.toMillis(value);
+                type.writeLong(builder, millis);
+            }
+        }
+        return builder.build();
+    }
+
+    private Block buildBlockCharType(VarCharVector vector, Type type)
+    {
+        BlockBuilder builder = type.createBlockBuilder(null, vector.getValueCount());
+        for (int i = 0; i < vector.getValueCount(); i++) {
+            if (vector.isNull(i)) {
+                builder.appendNull();
+            }
+            else {
+                String value = new String(vector.get(i), StandardCharsets.UTF_8);
+                type.writeSlice(builder, Slices.utf8Slice(CharMatcher.is(' ').trimTrailingFrom(value)));
+            }
+        }
+        return builder.build();
+    }
+
+    private Block buildBlockTimeType(VarCharVector vector, Type type)
+    {
+        BlockBuilder builder = type.createBlockBuilder(null, vector.getValueCount());
+        for (int i = 0; i < vector.getValueCount(); i++) {
+            if (vector.isNull(i)) {
+                builder.appendNull();
+            }
+            else {
+                String timeString = new String(vector.get(i), StandardCharsets.UTF_8);
+                LocalTime time = LocalTime.parse(timeString);
+                long millis = Duration.between(LocalTime.MIN, time).toMillis();
                 type.writeLong(builder, millis);
             }
         }
