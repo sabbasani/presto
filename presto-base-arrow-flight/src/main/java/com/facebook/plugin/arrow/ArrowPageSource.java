@@ -53,7 +53,6 @@ import org.apache.arrow.vector.VarBinaryVector;
 import org.apache.arrow.vector.VarCharVector;
 import org.apache.arrow.vector.VectorSchemaRoot;
 
-import java.io.IOException;
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -66,7 +65,7 @@ import static com.facebook.plugin.arrow.ArrowErrorCode.ARROW_FLIGHT_ERROR;
 public class ArrowPageSource
         implements ConnectorPageSource
 {
-    private static Logger logger = Logger.get(ArrowPageSource.class);
+    private static final Logger logger = Logger.get(ArrowPageSource.class);
     private final ArrowSplit split;
     private final List<ArrowColumnHandle> columnHandles;
     private final ArrowFlightClientHandler clientHandler;
@@ -150,7 +149,7 @@ public class ArrowPageSource
     }
 
     @Override
-    public void close() throws IOException
+    public void close()
     {
         if (vectorSchemaRoot.isPresent()) {
             vectorSchemaRoot.get().close();
@@ -163,12 +162,22 @@ public class ArrowPageSource
                 logger.error(e);
             }
         }
+        try {
+            if (flightClient != null) {
+                flightClient.close();
+                flightClient = null;
+            }
+        }
+        catch (Exception ex) {
+            logger.error("Failed to close the flight client: %s", ex.getMessage(), ex);
+        }
     }
 
     private void getFlightStream(ArrowFlightClientHandler clientHandler, byte[] ticket, ConnectorSession connectorSession)
     {
         try {
-            Optional<String> uri = split.getLocationUrls().isEmpty() ? Optional.empty() : Optional.of(split.getLocationUrls().get(0));
+            Optional<String> uri = (split == null || split.getLocationUrls().isEmpty()) ?
+                    Optional.empty() : Optional.of(split.getLocationUrls().get(0));
             flightClient = clientHandler.getClient(uri);
             flightStream = flightClient.getFlightClient().getStream(new Ticket(ticket), clientHandler.getCallOptions(connectorSession));
         }
