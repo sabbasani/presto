@@ -15,11 +15,15 @@ package com.facebook.plugin.arrow;
 
 import com.facebook.airlift.log.Logger;
 import com.facebook.presto.spi.ConnectorSession;
+import org.apache.arrow.flight.FlightClient;
 import org.apache.arrow.flight.FlightDescriptor;
 import org.apache.arrow.flight.FlightInfo;
+import org.apache.arrow.flight.Location;
 import org.apache.arrow.flight.grpc.CredentialCallOption;
+import org.apache.arrow.memory.RootAllocator;
 
-import java.util.HashMap;
+import java.io.FileInputStream;
+import java.io.InputStream;
 import java.util.Optional;
 
 import static com.facebook.plugin.arrow.ArrowErrorCode.ARROW_FLIGHT_ERROR;
@@ -28,12 +32,49 @@ public abstract class ArrowFlightClientHandler
 {
     private static final Logger logger = Logger.get(ArrowFlightClientHandler.class);
     private final ArrowFlightConfig config;
-    private final HashMap<String, ArrowFlightClientCacheItem> arrowFlightClientCache;
+    private ArrowFlightClient arrowFlightClient;
 
     public ArrowFlightClientHandler(ArrowFlightConfig config)
     {
         this.config = config;
-        this.arrowFlightClientCache = new HashMap<>();
+    }
+
+    private void initializeClient(Optional<String> uri)
+    {
+        try {
+            RootAllocator allocator = new RootAllocator(Long.MAX_VALUE);
+            Optional<InputStream> trustedCertificate = Optional.empty();
+
+            Location location;
+            if (uri.isPresent()) {
+                location = new Location(uri.get());
+            }
+            else {
+                if (config.getArrowFlightServerSslEnabled() != null && !config.getArrowFlightServerSslEnabled()) {
+                    location = Location.forGrpcInsecure(config.getFlightServerName(), config.getArrowFlightPort());
+                }
+                else {
+                    location = Location.forGrpcTls(config.getFlightServerName(), config.getArrowFlightPort());
+                }
+            }
+
+            logger.info("location %s", location.getUri().toString());
+
+            FlightClient.Builder flightClientBuilder = FlightClient.builder(allocator, location);
+            if (config.getVerifyServer() != null && !config.getVerifyServer()) {
+                flightClientBuilder.verifyServer(false);
+            }
+            else if (config.getFlightServerSSLCertificate() != null) {
+                trustedCertificate = Optional.of(new FileInputStream(config.getFlightServerSSLCertificate()));
+                flightClientBuilder.trustedCertificates(trustedCertificate.get()).useTls();
+            }
+
+            FlightClient flightClient = flightClientBuilder.build();
+            this.arrowFlightClient = new ArrowFlightClient(flightClient, trustedCertificate, allocator);
+        }
+        catch (Exception ex) {
+            throw new ArrowException(ARROW_FLIGHT_ERROR, "The flight client could not be obtained." + ex.getMessage(), ex);
+        }
     }
 
     public ArrowFlightConfig getConfig()
@@ -41,16 +82,11 @@ public abstract class ArrowFlightClientHandler
         return config;
     }
 
-    public synchronized ArrowFlightClient getClient(Optional<String> uri)
+    public ArrowFlightClient getClient(Optional<String> uri)
     {
-        String cacheKey = uri.orElse(null);
-        if (!arrowFlightClientCache.containsKey(cacheKey)) {
-            arrowFlightClientCache.put(cacheKey, new ArrowFlightClientCacheItem(config, uri));
-        }
-
-        return arrowFlightClientCache.get(cacheKey).getClient();
+        initializeClient(uri);
+        return this.arrowFlightClient;
     }
-
     public FlightInfo getFlightInfo(ArrowFlightRequest request, ConnectorSession connectorSession)
     {
         try {
@@ -64,6 +100,17 @@ public abstract class ArrowFlightClientHandler
         }
         catch (Exception e) {
             throw new ArrowException(ARROW_FLIGHT_ERROR, "The flight information could not be obtained from the flight server." + e.getMessage(), e);
+        }
+        finally {
+            try {
+                if (arrowFlightClient != null) {
+                    arrowFlightClient.close();
+                    arrowFlightClient = null;
+                }
+            }
+            catch (Exception ex) {
+                logger.error("Failed to close the flight client: %s", ex.getMessage(), ex);
+            }
         }
     }
     protected abstract CredentialCallOption getCallOptions(ConnectorSession connectorSession);
