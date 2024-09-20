@@ -25,6 +25,7 @@ import com.facebook.presto.common.type.SmallintType;
 import com.facebook.presto.common.type.TimeType;
 import com.facebook.presto.common.type.TimestampType;
 import com.facebook.presto.common.type.TinyintType;
+import com.facebook.presto.common.type.Type;
 import com.facebook.presto.common.type.VarbinaryType;
 import com.facebook.presto.common.type.VarcharType;
 import com.facebook.presto.spi.ColumnHandle;
@@ -106,78 +107,87 @@ public abstract class ArrowAbstractMetadata
 
         String schemaValue = ((ArrowTableHandle) tableHandle).getSchema();
         String tableValue = ((ArrowTableHandle) tableHandle).getTable();
-        String dataSourceSpecificSchemaValue = getDataSourceSpecificSchemaName(config, schemaValue);
-        String dataSourceSpecificTableName = getDataSourceSpecificTableName(config, tableValue);
-        List<Field> columnList = getColumnsList(dataSourceSpecificSchemaValue, dataSourceSpecificTableName, session);
+        String dbSpecificSchemaValue = getDataSourceSpecificSchemaName(config, schemaValue);
+        String dBSpecificTableName = getDataSourceSpecificTableName(config, tableValue);
+        List<Field> columnList = getColumnsList(dbSpecificSchemaValue, dBSpecificTableName, session);
 
         for (Field field : columnList) {
             String columnName = field.getName();
             logger.debug("The value of the flight columnName is:- %s", columnName);
+
+            ArrowColumnHandle handle;
             switch (field.getType().getTypeID()) {
                 case Int:
                     ArrowType.Int intType = (ArrowType.Int) field.getType();
-                    switch (intType.getBitWidth()) {
-                        case 64:
-                            column.put(columnName, new ArrowColumnHandle(columnName, BigintType.BIGINT));
-                            break;
-                        case 32:
-                            column.put(columnName, new ArrowColumnHandle(columnName, IntegerType.INTEGER));
-                            break;
-                        case 16:
-                            column.put(columnName, new ArrowColumnHandle(columnName, SmallintType.SMALLINT));
-                            break;
-                        case 8:
-                            column.put(columnName, new ArrowColumnHandle(columnName, TinyintType.TINYINT));
-                            break;
-                        default:
-                            throw new ArrowException(ARROW_FLIGHT_ERROR, "Invalid bit width " + intType.getBitWidth());
-                    }
+                    handle = createArrowColumnHandleForIntType(columnName, intType);
                     break;
                 case Binary:
                 case LargeBinary:
                 case FixedSizeBinary:
-                    column.put(columnName, new ArrowColumnHandle(columnName, VarbinaryType.VARBINARY));
+                    handle = new ArrowColumnHandle(columnName, VarbinaryType.VARBINARY);
                     break;
                 case Date:
-                    column.put(columnName, new ArrowColumnHandle(columnName, DateType.DATE));
+                    handle = new ArrowColumnHandle(columnName, DateType.DATE);
                     break;
                 case Timestamp:
-                    column.put(columnName, new ArrowColumnHandle(columnName, TimestampType.TIMESTAMP));
+                    handle = new ArrowColumnHandle(columnName, TimestampType.TIMESTAMP);
                     break;
                 case Utf8:
                 case LargeUtf8:
-                    column.put(columnName, new ArrowColumnHandle(columnName, VarcharType.VARCHAR));
+                    handle = new ArrowColumnHandle(columnName, VarcharType.VARCHAR);
                     break;
                 case FloatingPoint:
                     ArrowType.FloatingPoint floatingPoint = (ArrowType.FloatingPoint) field.getType();
-                    switch (floatingPoint.getPrecision()) {
-                        case SINGLE:
-                            column.put(columnName, new ArrowColumnHandle(columnName, RealType.REAL));
-                            break;
-                        case DOUBLE:
-                            column.put(columnName, new ArrowColumnHandle(columnName, DoubleType.DOUBLE));
-                            break;
-                        default:
-                            throw new ArrowException(ARROW_FLIGHT_ERROR, "Invalid floating point precision " + floatingPoint.getPrecision());
-                    }
+                    handle = createArrowColumnHandleForFloatingPointType(columnName, floatingPoint);
                     break;
                 case Decimal:
                     ArrowType.Decimal decimalType = (ArrowType.Decimal) field.getType();
-                    int precision = decimalType.getPrecision();
-                    int scale = decimalType.getScale();
-                    column.put(columnName, new ArrowColumnHandle(columnName, DecimalType.createDecimalType(precision, scale)));
+                    handle = new ArrowColumnHandle(columnName, DecimalType.createDecimalType(decimalType.getPrecision(), decimalType.getScale()));
                     break;
                 case Bool:
-                    column.put(columnName, new ArrowColumnHandle(columnName, BooleanType.BOOLEAN));
+                    handle = new ArrowColumnHandle(columnName, BooleanType.BOOLEAN);
                     break;
                 case Time:
-                    column.put(columnName, new ArrowColumnHandle(columnName, TimeType.TIME));
+                    handle = new ArrowColumnHandle(columnName, TimeType.TIME);
                     break;
                 default:
                     throw new UnsupportedOperationException("The data type " + field.getType().getTypeID() + " is not supported.");
             }
+            Type type = overrideFieldType(field, handle.getColumnType());
+            if (!type.equals(handle.getColumnType())) {
+                handle = new ArrowColumnHandle(columnName, type);
+            }
+            column.put(columnName, handle);
         }
         return column;
+    }
+
+    private ArrowColumnHandle createArrowColumnHandleForIntType(String columnName, ArrowType.Int intType)
+    {
+        switch (intType.getBitWidth()) {
+            case 64:
+                return new ArrowColumnHandle(columnName, BigintType.BIGINT);
+            case 32:
+                return new ArrowColumnHandle(columnName, IntegerType.INTEGER);
+            case 16:
+                return new ArrowColumnHandle(columnName, SmallintType.SMALLINT);
+            case 8:
+                return new ArrowColumnHandle(columnName, TinyintType.TINYINT);
+            default:
+                throw new ArrowException(ARROW_FLIGHT_ERROR, "Invalid bit width " + intType.getBitWidth());
+        }
+    }
+
+    private ArrowColumnHandle createArrowColumnHandleForFloatingPointType(String columnName, ArrowType.FloatingPoint floatingPoint)
+    {
+        switch (floatingPoint.getPrecision()) {
+            case SINGLE:
+                return new ArrowColumnHandle(columnName, RealType.REAL);
+            case DOUBLE:
+                return new ArrowColumnHandle(columnName, DoubleType.DOUBLE);
+            default:
+                throw new ArrowException(ARROW_FLIGHT_ERROR, "Invalid floating point precision " + floatingPoint.getPrecision());
+        }
     }
 
     @Override
@@ -209,71 +219,94 @@ public abstract class ArrowAbstractMetadata
 
         for (Field field : columnList) {
             String columnName = field.getName();
-            switch (field.getType().getTypeID()) {
+            ArrowType type = field.getType();
+
+            ColumnMetadata columnMetadata;
+
+            switch (type.getTypeID()) {
                 case Int:
-                    ArrowType.Int intType = (ArrowType.Int) field.getType();
-                    switch (intType.getBitWidth()) {
-                        case 64:
-                            meta.add(new ColumnMetadata(columnName, BigintType.BIGINT));
-                            break;
-                        case 32:
-                            meta.add(new ColumnMetadata(columnName, IntegerType.INTEGER));
-                            break;
-                        case 16:
-                            meta.add(new ColumnMetadata(columnName, SmallintType.SMALLINT));
-                            break;
-                        case 8:
-                            meta.add(new ColumnMetadata(columnName, TinyintType.TINYINT));
-                            break;
-                        default:
-                            throw new ArrowException(ARROW_FLIGHT_ERROR, "Invalid bit width " + intType.getBitWidth());
-                    }
+                    ArrowType.Int intType = (ArrowType.Int) type;
+                    columnMetadata = createIntColumnMetadata(columnName, intType);
                     break;
                 case Binary:
                 case LargeBinary:
                 case FixedSizeBinary:
-                    meta.add(new ColumnMetadata(columnName, VarbinaryType.VARBINARY));
+                    columnMetadata = new ColumnMetadata(columnName, VarbinaryType.VARBINARY);
                     break;
                 case Date:
-                    meta.add(new ColumnMetadata(columnName, DateType.DATE));
+                    columnMetadata = new ColumnMetadata(columnName, DateType.DATE);
                     break;
                 case Timestamp:
-                    meta.add(new ColumnMetadata(columnName, TimestampType.TIMESTAMP));
+                    columnMetadata = new ColumnMetadata(columnName, TimestampType.TIMESTAMP);
                     break;
                 case Utf8:
                 case LargeUtf8:
-                    meta.add(new ColumnMetadata(columnName, VarcharType.VARCHAR));
+                    columnMetadata = new ColumnMetadata(columnName, VarcharType.VARCHAR);
                     break;
                 case FloatingPoint:
-                    ArrowType.FloatingPoint floatingPoint = (ArrowType.FloatingPoint) field.getType();
-                    switch (floatingPoint.getPrecision()) {
-                        case SINGLE:
-                            meta.add(new ColumnMetadata(columnName, RealType.REAL));
-                            break;
-                        case DOUBLE:
-                            meta.add(new ColumnMetadata(columnName, DoubleType.DOUBLE));
-                            break;
-                        default:
-                            throw new ArrowException(ARROW_FLIGHT_ERROR, "Invalid floating point precision " + floatingPoint.getPrecision());
-                    }
+                    ArrowType.FloatingPoint floatingPointType = (ArrowType.FloatingPoint) type;
+                    columnMetadata = createFloatingPointColumnMetadata(columnName, floatingPointType);
                     break;
                 case Decimal:
-                    ArrowType.Decimal decimalType = (ArrowType.Decimal) field.getType();
-                    int precision = decimalType.getPrecision();
-                    int scale = decimalType.getScale();
-                    meta.add(new ColumnMetadata(columnName, DecimalType.createDecimalType(precision, scale)));
+                    ArrowType.Decimal decimalType = (ArrowType.Decimal) type;
+                    columnMetadata = new ColumnMetadata(columnName, DecimalType.createDecimalType(decimalType.getPrecision(), decimalType.getScale()));
                     break;
                 case Time:
-                    meta.add(new ColumnMetadata(columnName, TimeType.TIME));
+                    columnMetadata = new ColumnMetadata(columnName, TimeType.TIME);
                     break;
                 case Bool:
-                    meta.add(new ColumnMetadata(columnName, BooleanType.BOOLEAN));
+                    columnMetadata = new ColumnMetadata(columnName, BooleanType.BOOLEAN);
                     break;
                 default:
-                    throw new UnsupportedOperationException("The data type " + field.getType().getTypeID() + " is not supported.");
+                    throw new UnsupportedOperationException("The data type " + type.getTypeID() + " is not supported.");
             }
+
+            Type fieldType = overrideFieldType(field, columnMetadata.getType());
+            if (!fieldType.equals(columnMetadata.getType())) {
+                columnMetadata = new ColumnMetadata(columnName, fieldType);
+            }
+            meta.add(columnMetadata);
         }
         return new ConnectorTableMetadata(new SchemaTableName(((ArrowTableHandle) table).getSchema(), ((ArrowTableHandle) table).getTable()), meta);
+    }
+
+    private ColumnMetadata createIntColumnMetadata(String columnName, ArrowType.Int intType)
+    {
+        switch (intType.getBitWidth()) {
+            case 64:
+                return new ColumnMetadata(columnName, BigintType.BIGINT);
+            case 32:
+                return new ColumnMetadata(columnName, IntegerType.INTEGER);
+            case 16:
+                return new ColumnMetadata(columnName, SmallintType.SMALLINT);
+            case 8:
+                return new ColumnMetadata(columnName, TinyintType.TINYINT);
+            default:
+                throw new ArrowException(ARROW_FLIGHT_ERROR, "Invalid bit width " + intType.getBitWidth());
+        }
+    }
+
+    private ColumnMetadata createFloatingPointColumnMetadata(String columnName, ArrowType.FloatingPoint floatingPointType)
+    {
+        switch (floatingPointType.getPrecision()) {
+            case SINGLE:
+                return new ColumnMetadata(columnName, RealType.REAL);
+            case DOUBLE:
+                return new ColumnMetadata(columnName, DoubleType.DOUBLE);
+            default:
+                throw new ArrowException(ARROW_FLIGHT_ERROR, "Invalid floating point precision " + floatingPointType.getPrecision());
+        }
+    }
+
+    /**
+     * Provides the field type, which can be overridden by concrete implementations
+     * with their own custom type.
+     *
+     * @return the field type
+     */
+    protected Type overrideFieldType(Field field, Type type)
+    {
+        return type;
     }
 
     @Override
