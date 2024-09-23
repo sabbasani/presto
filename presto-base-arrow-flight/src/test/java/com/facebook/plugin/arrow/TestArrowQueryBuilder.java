@@ -84,7 +84,7 @@ public class TestArrowQueryBuilder
 
         List<TypeAndValue> accumulator = new ArrayList<>();
 
-        if (tupleDomain != null) {
+        if (tupleDomain != null && !tupleDomain.isAll()) {
             List<String> clauses = toConjuncts(columns, tupleDomain, accumulator);
             if (!clauses.isEmpty()) {
                 sql.append(" WHERE ")
@@ -256,7 +256,7 @@ public class TestArrowQueryBuilder
     }
     private String quote(String name)
     {
-        return name;
+        return "\"" + name + "\"";
     }
 
     private String quoteValue(String name)
@@ -287,6 +287,9 @@ public class TestArrowQueryBuilder
         }
         else if (javaType == Slice.class) {
             return quoteValue(((Slice) value).toStringUtf8());
+        }
+        else if (type instanceof VarcharType) {
+            return quoteValue(((Slice) value).toStringUtf8());  // You might want to check the max length
         }
         else {
             return quoteValue(value.toString());
