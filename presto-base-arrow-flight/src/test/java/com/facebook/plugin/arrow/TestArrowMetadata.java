@@ -13,6 +13,7 @@
  */
 package com.facebook.plugin.arrow;
 
+import com.facebook.airlift.log.Logger;
 import com.facebook.presto.spi.ConnectorSession;
 import com.facebook.presto.spi.NodeManager;
 import com.facebook.presto.spi.SchemaTableName;
@@ -37,6 +38,7 @@ import static java.util.Locale.ENGLISH;
 public class TestArrowMetadata
         extends ArrowAbstractMetadata
 {
+    private static final Logger logger = Logger.get(TestArrowMetadata.class);
     private static final ObjectMapper objectMapper = new ObjectMapper();
     private final NodeManager nodeManager;
     private final TestArrowFlightConfig testconfig;
@@ -86,9 +88,10 @@ public class TestArrowMetadata
 
     public List<String> extractSchemaAndTableData(Optional<String> schema, ConnectorSession connectorSession)
     {
+        ArrowFlightClient client = null;
         try {
             List<String> names = new ArrayList<>();
-            ArrowFlightClient client = clientHandler.getClient(Optional.empty());
+            client = clientHandler.getClient(Optional.empty());
             ArrowFlightRequest request = getArrowFlightRequest(config, schema.orElse(null));
             ObjectNode rootNode = (ObjectNode) objectMapper.readTree(request.getCommand());
 
@@ -98,13 +101,24 @@ public class TestArrowMetadata
             while (iterator.hasNext()) {
                 Result result = iterator.next();
                 String jsonResult = new String(result.getBody(), StandardCharsets.UTF_8);
-                List<String> tableNames = objectMapper.readValue(jsonResult, new TypeReference<List<String>>() {});
+                List<String> tableNames = objectMapper.readValue(jsonResult, new TypeReference<List<String>>() {
+                });
                 names.addAll(tableNames);
             }
             return names;
         }
         catch (IOException e) {
             throw new RuntimeException(e);
+        }
+        finally {
+            if (client != null) {
+                try {
+                    client.close();
+                }
+                catch (Exception ex) {
+                    logger.error("Failed to close the flight client: %s", ex.getMessage(), ex);
+                }
+            }
         }
     }
 

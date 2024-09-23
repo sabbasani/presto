@@ -51,6 +51,7 @@ import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.ThreadLocalRandom;
 
 public class TestArrowServer
         implements FlightProducer
@@ -254,6 +255,8 @@ public class TestArrowServer
             case "BINARY":
             case "VARBINARY":
                 return new ArrowType.Binary();
+            case "NULL":
+                return new ArrowType.Null();
             default:
                 throw new IllegalArgumentException("Unsupported SQL type: " + sqlType);
         }
