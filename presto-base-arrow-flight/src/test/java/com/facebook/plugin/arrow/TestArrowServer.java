@@ -99,34 +99,17 @@ public class TestArrowServer
             try (Statement stmt = connection.createStatement()) {
                 ResultSet rs = stmt.executeQuery(query);
 
-                JdbcToArrowConfigBuilder config = new JdbcToArrowConfigBuilder(allocator, null);
+                JdbcToArrowConfigBuilder config = new JdbcToArrowConfigBuilder().setAllocator(allocator).setTargetBatchSize(15360);
                 ArrowVectorIterator iterator = JdbcToArrow.sqlToArrowVectorIterator(rs, config.build());
 
                 // Stream the Arrow data using ServerStreamListener
-//
-                if (iterator.hasNext()) {
-                    try (VectorSchemaRoot root = iterator.next()) {
-                        int rowCount = root.getRowCount();
-                        System.out.println("Retrieved VectorSchemaRoot with row count: " + rowCount);
-                        serverStreamListener.start(root); // Start the listener with the first root
-                        serverStreamListener.putNext(); // Send the first batch of data
-                      System.out.println("Retrieved VectorSchemaRoot with row count: " + rowCount);
-                    }
-                }
-
                 while (iterator.hasNext()) {
                     try (VectorSchemaRoot root = iterator.next()) {
-//                        serverStreamListener.start(root1);
-                        VectorUnloader unloader = new VectorUnloader(root);
+                        serverStreamListener.start(root);
                         int rowCount = root.getRowCount();
                         System.out.println("Retrieved VectorSchemaRoot with row count: " + rowCount);
 
-                        if (rowCount > 0) {
-                            serverStreamListener.putNext();
-                        }
-                        else {
-                            System.out.println("Empty VectorSchemaRoot received.");
-                        }
+                        serverStreamListener.putNext();
                     }
                 }
 
