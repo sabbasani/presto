@@ -19,6 +19,8 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.arrow.adapter.jdbc.ArrowVectorIterator;
 import org.apache.arrow.adapter.jdbc.JdbcToArrow;
+import org.apache.arrow.adapter.jdbc.JdbcToArrowConfig;
+import org.apache.arrow.adapter.jdbc.JdbcToArrowConfigBuilder;
 import org.apache.arrow.flight.Action;
 import org.apache.arrow.flight.ActionType;
 import org.apache.arrow.flight.Criteria;
@@ -30,8 +32,9 @@ import org.apache.arrow.flight.FlightStream;
 import org.apache.arrow.flight.PutResult;
 import org.apache.arrow.flight.Result;
 import org.apache.arrow.flight.Ticket;
-import org.apache.arrow.memory.BufferAllocator;
+import org.apache.arrow.memory.RootAllocator;
 import org.apache.arrow.vector.VectorSchemaRoot;
+import org.apache.arrow.vector.VectorUnloader;
 import org.apache.arrow.vector.types.DateUnit;
 import org.apache.arrow.vector.types.FloatingPointPrecision;
 import org.apache.arrow.vector.types.TimeUnit;
@@ -55,14 +58,14 @@ import java.util.List;
 public class TestArrowServer
         implements FlightProducer
 {
-    private final BufferAllocator allocator;
+    private final RootAllocator allocator;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     private static Connection connection;
 
     private static final Logger logger = Logger.get(TestArrowServer.class);
 
-    public TestArrowServer(BufferAllocator allocator) throws Exception
+    public TestArrowServer(RootAllocator allocator) throws Exception
     {
         this.allocator = allocator;
         TestH2DatabaseSetup.setup();
@@ -73,39 +76,79 @@ public class TestArrowServer
     public void getStream(CallContext callContext, Ticket ticket, ServerStreamListener serverStreamListener)
     {
         try {
+            // Convert ticket bytes to String and parse into JSON
             String ticketString = new String(ticket.getBytes(), StandardCharsets.UTF_8);
-
             JsonNode ticketJson = objectMapper.readTree(ticketString);
-            String query = ticketJson.get("interactionProperties").get("select_statement").asText();
 
+            // Extract interaction properties and validate
+            JsonNode interactionProperties = ticketJson.get("interactionProperties");
+            if (interactionProperties == null || !interactionProperties.has("select_statement")) {
+                throw new IllegalArgumentException("Invalid ticket format: missing select_statement.");
+            }
+
+            // Extract and validate the SQL query
+            String query = interactionProperties.get("select_statement").asText();
             if (query == null || query.trim().isEmpty()) {
                 throw new IllegalArgumentException("Query cannot be null or empty.");
             }
 
             logger.info("Executing query: " + query);
-            query = query.toUpperCase();
-            try (Statement stmt = connection.createStatement();
-                    ResultSet rs = stmt.executeQuery(query)) {
-                ArrowVectorIterator iterator = JdbcToArrow.sqlToArrowVectorIterator(rs, allocator);
+            query = query.toUpperCase(); // Optionally, to maintain consistency
+
+            // Execute the query and convert result set to Arrow format
+            try (Statement stmt = connection.createStatement()) {
+                ResultSet rs = stmt.executeQuery(query);
+
+                JdbcToArrowConfigBuilder config = new JdbcToArrowConfigBuilder(allocator, null);
+                ArrowVectorIterator iterator = JdbcToArrow.sqlToArrowVectorIterator(rs, config.build());
+
+                // Stream the Arrow data using ServerStreamListener
+//
+                if (iterator.hasNext()) {
+                    try (VectorSchemaRoot root = iterator.next()) {
+                        int rowCount = root.getRowCount();
+                        System.out.println("Retrieved VectorSchemaRoot with row count: " + rowCount);
+                        serverStreamListener.start(root); // Start the listener with the first root
+                        serverStreamListener.putNext(); // Send the first batch of data
+                      System.out.println("Retrieved VectorSchemaRoot with row count: " + rowCount);
+                    }
+                }
 
                 while (iterator.hasNext()) {
                     try (VectorSchemaRoot root = iterator.next()) {
-                        serverStreamListener.start(root);
-                        serverStreamListener.putNext();
+//                        serverStreamListener.start(root1);
+                        VectorUnloader unloader = new VectorUnloader(root);
+                        int rowCount = root.getRowCount();
+                        System.out.println("Retrieved VectorSchemaRoot with row count: " + rowCount);
+
+                        if (rowCount > 0) {
+                            serverStreamListener.putNext();
+                        }
+                        else {
+                            System.out.println("Empty VectorSchemaRoot received.");
+                        }
                     }
                 }
+
+                // Mark the stream as completed
                 serverStreamListener.completed();
             }
+            // Handle SQL exceptions
             catch (SQLException e) {
+                logger.error("SQL query execution failed", e);
                 serverStreamListener.error(e);
                 throw new RuntimeException("Failed to execute query", e);
             }
+            // Handle Arrow processing errors
             catch (IOException e) {
+                logger.error("Arrow data processing failed", e);
                 serverStreamListener.error(e);
                 throw new RuntimeException("Failed to process Arrow data", e);
             }
         }
+        // Handle all other exceptions, including parsing errors
         catch (Exception e) {
+            logger.error("Ticket processing failed", e);
             serverStreamListener.error(e);
             throw new RuntimeException("Failed to process the ticket", e);
         }
