@@ -22,6 +22,7 @@ import org.apache.arrow.adapter.jdbc.JdbcToArrow;
 import org.apache.arrow.adapter.jdbc.JdbcToArrowConfigBuilder;
 import org.apache.arrow.flight.Action;
 import org.apache.arrow.flight.ActionType;
+import org.apache.arrow.flight.BackpressureStrategy;
 import org.apache.arrow.flight.Criteria;
 import org.apache.arrow.flight.FlightDescriptor;
 import org.apache.arrow.flight.FlightEndpoint;
@@ -58,9 +59,10 @@ public class TestArrowServer
 {
     private final RootAllocator allocator;
     private final ObjectMapper objectMapper = new ObjectMapper();
-
     private static Connection connection;
-
+    private static final int BATCH_IDLE_TIME_MINUTES = 10;
+    private static final long BATCH_IDLE_TIME_MS = java.util.concurrent.TimeUnit.MINUTES.toMillis(BATCH_IDLE_TIME_MINUTES);
+    private static final long LISTENER_WAIT_TIME_MS = 5000;
     private static final Logger logger = Logger.get(TestArrowServer.class);
 
     public TestArrowServer(RootAllocator allocator) throws Exception
@@ -74,45 +76,59 @@ public class TestArrowServer
     public void getStream(CallContext callContext, Ticket ticket, ServerStreamListener serverStreamListener)
     {
         try {
-            // Convert ticket bytes to String and parse into JSON
-            String ticketString = new String(ticket.getBytes(), StandardCharsets.UTF_8);
-            JsonNode ticketJson = objectMapper.readTree(ticketString);
+            final BackpressureStrategy bpStrategy = new BackpressureStrategy.CallbackBackpressureStrategy();
+            bpStrategy.register(serverStreamListener);
 
-            // Extract interaction properties and validate
-            JsonNode interactionProperties = ticketJson.get("interactionProperties");
-            if (interactionProperties == null || !interactionProperties.has("select_statement")) {
-                throw new IllegalArgumentException("Invalid ticket format: missing select_statement.");
-            }
-
-            // Extract and validate the SQL query
-            String query = interactionProperties.get("select_statement").asText();
-            if (query == null || query.trim().isEmpty()) {
-                throw new IllegalArgumentException("Query cannot be null or empty.");
-            }
-
-            logger.info("Executing query: " + query);
-            query = query.toUpperCase(); // Optionally, to maintain consistency
+            // Stream observer to manage backpressure (token-based)
+            serverStreamListener.setOnCancelHandler(() -> logger.info("Stream cancelled by client"));
+            serverStreamListener.setOnReadyHandler(() -> {
+                if (serverStreamListener.isReady()) {
+                    logger.info("client ready");
+                }
+            });
 
             // Execute the query and convert result set to Arrow format
             try (Statement stmt = connection.createStatement()) {
+                // Convert ticket bytes to String and parse into JSON
+                String ticketString = new String(ticket.getBytes(), StandardCharsets.UTF_8);
+                JsonNode ticketJson = objectMapper.readTree(ticketString);
+
+                // Extract interaction properties and validate
+                JsonNode interactionProperties = ticketJson.get("interactionProperties");
+                if (interactionProperties == null || !interactionProperties.has("select_statement")) {
+                    throw new IllegalArgumentException("Invalid ticket format: missing select_statement.");
+                }
+
+                // Extract and validate the SQL query
+                String query = interactionProperties.get("select_statement").asText();
+                if (query == null || query.trim().isEmpty()) {
+                    throw new IllegalArgumentException("Query cannot be null or empty.");
+                }
+
+                logger.info("Executing query: " + query);
+                query = query.toUpperCase(); // Optionally, to maintain consistency
+
                 ResultSet rs = stmt.executeQuery(query);
 
                 JdbcToArrowConfigBuilder config = new JdbcToArrowConfigBuilder().setAllocator(allocator).setTargetBatchSize(5000000);
                 ArrowVectorIterator iterator = JdbcToArrow.sqlToArrowVectorIterator(rs, config.build());
-
                 // Stream the Arrow data using ServerStreamListener
                 while (iterator.hasNext()) {
+                    if (!waitForListener(bpStrategy)) {
+                        break;
+                    }
                     try (VectorSchemaRoot root = iterator.next()) {
                         serverStreamListener.start(root);
                         int rowCount = root.getRowCount();
-                        System.out.println("Retrieved VectorSchemaRoot with row count: " + rowCount);
+                        logger.info("Retrieved VectorSchemaRoot with row count: %s", rowCount);
 
                         serverStreamListener.putNext();
+                        Thread.sleep(100);
                     }
                 }
-
-                // Mark the stream as completed
-                serverStreamListener.completed();
+            }
+            catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
             }
             // Handle SQL exceptions
             catch (SQLException e) {
@@ -126,6 +142,13 @@ public class TestArrowServer
                 serverStreamListener.error(e);
                 throw new RuntimeException("Failed to process Arrow data", e);
             }
+            catch (Exception e) {
+                logger.error(e);
+            }
+            finally {
+                // Mark the stream as completed
+                serverStreamListener.completed();
+            }
         }
         // Handle all other exceptions, including parsing errors
         catch (Exception e) {
@@ -133,6 +156,21 @@ public class TestArrowServer
             serverStreamListener.error(e);
             throw new RuntimeException("Failed to process the ticket", e);
         }
+    }
+
+    private boolean waitForListener(BackpressureStrategy bpStrategy)
+    {
+        BackpressureStrategy.WaitResult wr;
+        long totalWaitTimeMs = 0;
+        while ((wr = bpStrategy.waitForListener(LISTENER_WAIT_TIME_MS)) == BackpressureStrategy.WaitResult.TIMEOUT) {
+            totalWaitTimeMs += LISTENER_WAIT_TIME_MS;
+            if (totalWaitTimeMs >= BATCH_IDLE_TIME_MS) {
+                throw new ArrowException(ArrowErrorCode.ARROW_INTERNAL_ERROR, "Timed out waiting for client call for %s minutes" +
+                        BATCH_IDLE_TIME_MINUTES);
+            }
+            logger.info("Waiting for ready from client");
+        }
+        return wr != BackpressureStrategy.WaitResult.CANCELLED;
     }
 
     @Override
