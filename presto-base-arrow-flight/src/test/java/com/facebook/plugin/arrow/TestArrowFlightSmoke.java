@@ -16,14 +16,21 @@ package com.facebook.plugin.arrow;
 import com.facebook.airlift.log.Logger;
 import com.facebook.presto.testing.QueryRunner;
 import com.facebook.presto.tests.AbstractTestQueries;
+import org.apache.arrow.flight.FlightClient;
+import org.apache.arrow.flight.FlightDescriptor;
+import org.apache.arrow.flight.FlightInfo;
 import org.apache.arrow.flight.FlightServer;
+import org.apache.arrow.flight.FlightStream;
 import org.apache.arrow.flight.Location;
+import org.apache.arrow.memory.BufferAllocator;
 import org.apache.arrow.memory.RootAllocator;
+import org.apache.arrow.vector.VectorSchemaRoot;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
 
 import java.io.File;
+import java.util.Optional;
 
 import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertTrue;
@@ -32,7 +39,6 @@ public class TestArrowFlightSmoke
         extends AbstractTestQueries
 {
     private static final Logger logger = Logger.get(TestArrowFlightSmoke.class);
-
     private static RootAllocator allocator;
     private static FlightServer server;
     private static Location serverLocation;
@@ -48,6 +54,7 @@ public class TestArrowFlightSmoke
         server = FlightServer.builder(allocator, serverLocation, new TestArrowServer(allocator))
                 .useTls(certChainFile, privateKeyFile)
                 .build();
+
         server.start();
         logger.info("Server listening on port " + server.getPort());
     }
@@ -130,5 +137,50 @@ public class TestArrowFlightSmoke
     {
         String query = "SELECT t1.id, t1.name, t1.birthdate, t1.salary, t1.active, t2.description, t2.quantity, t2.price FROM example_table1 t1 JOIN example_table2 t2 ON t1.id = t2.id";
         assertEquals(getQueryRunner().execute(query).getRowCount(), 2);
+    }
+
+    @Test
+    public void testAggregationOverUnknown()
+    {
+        assertQuery("SELECT clerk, min(totalprice), max(totalprice), min(nullvalue), max(nullvalue) " +
+                "FROM (SELECT clerk, totalprice, null AS nullvalue FROM orders) " +
+                "GROUP BY clerk");
+        assertEquals(getQueryRunner().execute(query).getRowCount(), 2);
+    }
+
+    @Test
+    public void testStandaloneFlightClient() throws Exception
+    {
+        Optional<String> query = Optional.of("SELECT \"TOTALPRICE\", \"CLERK\" FROM \"testdb\".\"orders\"");
+        TestArrowFlightRequest request = new TestArrowFlightRequest(new ArrowFlightConfig(), new TestArrowFlightConfig(), "testdb", "orders", query, 1);
+
+        // Step 1: Set up the Arrow memory allocator and Flight client
+        BufferAllocator allocator = new RootAllocator(Long.MAX_VALUE);
+
+        // Replace with your server's hostname and port
+        String host = "127.0.0.1";
+        int port = 9443;
+
+        FlightClient client = FlightClient.builder(allocator, Location.forGrpcTls(host, port)).verifyServer(false).build();
+
+        FlightDescriptor descriptor = FlightDescriptor.command(request.getCommand());
+        logger.debug("Fetching flight info");
+        FlightInfo flightInfo = client.getInfo(descriptor);
+        logger.debug("got flight info");
+
+        // Step 3: Retrieve data
+        try (FlightStream flightStream = client.getStream(flightInfo.getEndpoints().get(0).getTicket())) {
+            // Step 5: Read and print the data
+            int i = 0;
+            while (flightStream.next()) {
+                VectorSchemaRoot root = flightStream.getRoot();
+                logger.info("root rowcount %s, counter %s", root.getRowCount(), ++i);
+                root.close();
+            }
+        }
+
+        // Step 6: Cleanup
+        client.close();
+        allocator.close();
     }
 }
