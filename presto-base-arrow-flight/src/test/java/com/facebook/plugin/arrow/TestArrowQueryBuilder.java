@@ -50,6 +50,8 @@ import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkState;
 import static com.google.common.base.Strings.isNullOrEmpty;
 import static com.google.common.collect.Iterables.getOnlyElement;
+import static java.lang.Float.intBitsToFloat;
+import static java.lang.Math.toIntExact;
 import static java.lang.String.format;
 import static java.util.Objects.requireNonNull;
 import static java.util.stream.Collectors.joining;
@@ -183,7 +185,6 @@ public class TestArrowQueryBuilder
         ImmutableList.Builder<String> builder = ImmutableList.builder();
         for (ArrowColumnHandle column : columns) {
             Type type = column.getColumnType();
-            //Todo handle tupleDomain null
             if (isAcceptedType(type)) {
                 Domain domain = tupleDomain.getDomains().get().get(column);
                 if (domain != null) {
@@ -270,6 +271,12 @@ public class TestArrowQueryBuilder
         accumulator.add(new TypeAndValue(type, value));
     }
 
+    public static String convertLongToFloatString(Long value)
+    {
+        float floatFromIntBits = intBitsToFloat(toIntExact(value));
+        return String.valueOf(floatFromIntBits);
+    }
+
     private String parameterValueToString(Type type, Object value)
     {
         Class<?> javaType = type.getJavaType();
@@ -282,14 +289,14 @@ public class TestArrowQueryBuilder
         else if (type instanceof TimestampType && javaType == long.class) {
             return quoteValue(convertEpochToString((Long) value, type));
         }
+        else if (type instanceof RealType && javaType == long.class) {
+            return convertLongToFloatString((Long) value);
+        }
         else if (javaType == boolean.class || javaType == double.class || javaType == long.class) {
             return value.toString();
         }
         else if (javaType == Slice.class) {
             return quoteValue(((Slice) value).toStringUtf8());
-        }
-        else if (type instanceof VarcharType) {
-            return quoteValue(((Slice) value).toStringUtf8());  // You might want to check the max length
         }
         else {
             return quoteValue(value.toString());

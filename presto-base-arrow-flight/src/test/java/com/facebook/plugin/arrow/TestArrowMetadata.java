@@ -14,6 +14,10 @@
 package com.facebook.plugin.arrow;
 
 import com.facebook.airlift.log.Logger;
+import com.facebook.presto.common.type.CharType;
+import com.facebook.presto.common.type.TimeType;
+import com.facebook.presto.common.type.Type;
+import com.facebook.presto.common.type.VarcharType;
 import com.facebook.presto.spi.ConnectorSession;
 import com.facebook.presto.spi.NodeManager;
 import com.facebook.presto.spi.SchemaTableName;
@@ -23,6 +27,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.common.collect.ImmutableList;
 import org.apache.arrow.flight.Action;
 import org.apache.arrow.flight.Result;
+import org.apache.arrow.vector.types.pojo.Field;
 
 import javax.inject.Inject;
 
@@ -119,6 +124,28 @@ public class TestArrowMetadata
                     logger.error("Failed to close the flight client: %s", ex.getMessage(), ex);
                 }
             }
+        }
+    }
+
+    @Override
+    protected Type overrideFieldType(Field field, Type type)
+    {
+        String columnLength = field.getMetadata().get("columnLength");
+        int length = columnLength != null ? Integer.parseInt(columnLength) : 0;
+
+        String nativeType = field.getMetadata().get("columnNativeType");
+
+        if ("CHAR".equals(nativeType) || "CHARACTER".equals(nativeType)) {
+            return CharType.createCharType(length);
+        }
+        else if ("VARCHAR".equals(nativeType)) {
+            return VarcharType.createVarcharType(length);
+        }
+        else if ("TIME".equals(nativeType)) {
+            return TimeType.TIME;
+        }
+        else {
+            return type;
         }
     }
 

@@ -15,33 +15,47 @@
 package com.facebook.plugin.arrow;
 
 import com.facebook.presto.Session;
-import com.facebook.presto.testing.LocalQueryRunner;
+import com.facebook.presto.common.type.TimeZoneKey;
+import com.facebook.presto.tests.DistributedQueryRunner;
 import com.google.common.collect.ImmutableMap;
 
 import java.util.Map;
+import java.util.TimeZone;
 
 import static com.facebook.presto.testing.TestingSession.testSessionBuilder;
 
 public class TestArrowQueryRunner
 {
-    private TestArrowQueryRunner() {}
-
-    public static LocalQueryRunner createQueryRunner()
+    private static DistributedQueryRunner queryRunner;
+    private TestArrowQueryRunner()
     {
-        return createQueryRunner(ImmutableMap.of(), TestingArrowFactory.class);
+        throw new UnsupportedOperationException("This is a utility class and cannot be instantiated");
     }
 
-    public static LocalQueryRunner createQueryRunner(Map<String, String> catalogProperties, Class<? extends ArrowConnectorFactory> factoryClass)
+    public static DistributedQueryRunner createQueryRunner() throws Exception
+    {
+        if (queryRunner == null) {
+            queryRunner = createQueryRunner(ImmutableMap.of(), TestingArrowFactory.class);
+        }
+        return queryRunner;
+    }
+
+    private static DistributedQueryRunner createQueryRunner(Map<String, String> catalogProperties, Class<? extends TestingArrowFactory> factoryClass) throws Exception
     {
         Session session = testSessionBuilder()
                 .setCatalog("arrow")
                 .setSchema("testdb")
+                .setTimeZoneKey(TimeZoneKey.getTimeZoneKey(TimeZone.getDefault().getID()))
                 .build();
 
-        LocalQueryRunner queryRunner = new LocalQueryRunner(session);
+        if (queryRunner == null) {
+            queryRunner = DistributedQueryRunner.builder(session).build();
+        }
 
         try {
-            ArrowConnectorFactory connectorFactory = new ArrowConnectorFactory(factoryClass.getSimpleName(), new TestArrowModule(), TestArrowQueryRunner.class.getClassLoader());
+            String connectorName = "arrow";
+            queryRunner.installPlugin(new ArrowPlugin(connectorName, new TestArrowModule()));
+
             ImmutableMap.Builder<String, String> properties = ImmutableMap.<String, String>builder()
                     .putAll(catalogProperties)
                     .put("arrow-flight.server", "127.0.0.1")
@@ -54,7 +68,8 @@ public class TestArrowQueryRunner
                     .put("data-source.username", "user")
                     .put("data-source.password", "password")
                     .put("data-source.ssl", "true");
-            queryRunner.createCatalog("arrow", connectorFactory, properties.build());
+
+            queryRunner.createCatalog(connectorName, connectorName, properties.build());
 
             return queryRunner;
         }
