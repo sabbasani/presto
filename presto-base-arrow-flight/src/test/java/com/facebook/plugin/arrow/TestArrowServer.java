@@ -35,6 +35,8 @@ import org.apache.arrow.flight.Ticket;
 import org.apache.arrow.memory.RootAllocator;
 import org.apache.arrow.vector.VectorLoader;
 import org.apache.arrow.vector.VectorSchemaRoot;
+import org.apache.arrow.vector.VectorUnloader;
+import org.apache.arrow.vector.ipc.message.ArrowRecordBatch;
 import org.apache.arrow.vector.types.DateUnit;
 import org.apache.arrow.vector.types.FloatingPointPrecision;
 import org.apache.arrow.vector.types.TimeUnit;
@@ -79,8 +81,8 @@ public class TestArrowServer
     @Override
     public void getStream(CallContext callContext, Ticket ticket, ServerStreamListener serverStreamListener)
     {
-        try {
-            Statement stmt = connection.createStatement();
+        try (Statement stmt = connection.createStatement()) {
+
             // Convert ticket bytes to String and parse into JSON
             String ticketString = new String(ticket.getBytes(), StandardCharsets.UTF_8);
             JsonNode ticketJson = objectMapper.readTree(ticketString);
@@ -100,40 +102,37 @@ public class TestArrowServer
             logger.info("Executing query: " + query);
             query = query.toUpperCase(); // Optionally, to maintain consistency
 
-            ResultSet rs = stmt.executeQuery(query);
+            try (ResultSet rs = stmt.executeQuery(query)) {
+                JdbcToArrowConfigBuilder config = new JdbcToArrowConfigBuilder().setAllocator(allocator).setTargetBatchSize(3);
+                ArrowVectorIterator iterator = JdbcToArrow.sqlToArrowVectorIterator(rs, config.build());
+                AtomicBoolean firstBatch = new AtomicBoolean(true);
 
-            RootAllocator rootAllocator = new RootAllocator(Long.MAX_VALUE);
-            JdbcToArrowConfigBuilder config = new JdbcToArrowConfigBuilder().setAllocator(rootAllocator).setTargetBatchSize(2);
-            ArrowVectorIterator iterator = JdbcToArrow.sqlToArrowVectorIterator(rs, config.build());
-            AtomicBoolean firstBatch = new AtomicBoolean(true);
-
-            serverStreamListener.setOnReadyHandler(() -> {
-                if (serverStreamListener.isReady()) {
-                    logger.info("client ready");
-                    if (iterator.hasNext()) {
-                        try(VectorSchemaRoot root = iterator.next()) {
+                VectorLoader vectorLoader = null;
+                VectorSchemaRoot newRoot = null;
+                while (iterator.hasNext()) {
+                    try (VectorSchemaRoot root = iterator.next()) {
+                        VectorUnloader vectorUnloader = new VectorUnloader(root);
+                        try (ArrowRecordBatch batch = vectorUnloader.getRecordBatch()) {
                             if (firstBatch.getAndSet(false)) {
-                                serverStreamListener.start(root);
+                                newRoot = VectorSchemaRoot.create(root.getSchema(), allocator);
+                                vectorLoader = new VectorLoader(newRoot);
+                                serverStreamListener.start(newRoot);
                             }
-                            int rowCount = root.getRowCount();
-                            logger.info("Retrieved VectorSchemaRoot with row count: %s", rowCount);
+                            if (vectorLoader != null) {
+                                vectorLoader.load(batch);
+                            }
+                            if (newRoot != null) {
+                                logger.info("Retrieved VectorSchemaRoot with row count: %s", newRoot.getRowCount());
+                            }
                             serverStreamListener.putNext();
                         }
                     }
-                    else {
-                        serverStreamListener.completed();
-                        try {
-                            rs.close();
-                            stmt.close();
-                            rootAllocator.close();
-                        }
-                        catch (SQLException e) {
-                            logger.error(e);
-                        }
-                    }
                 }
-            });
-
+                if (newRoot != null) {
+                    newRoot.close();
+                }
+                serverStreamListener.completed();
+            }
         }
         // Handle Arrow processing errors
         catch (IOException e) {
