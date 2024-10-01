@@ -43,7 +43,7 @@ import static java.util.Locale.ENGLISH;
 public class TestingArrowMetadata
         extends ArrowAbstractMetadata
 {
-    private static final Logger logger = Logger.get(TestArrowMetadata.class);
+    private static final Logger logger = Logger.get(TestingArrowMetadata.class);
     private static final ObjectMapper objectMapper = new ObjectMapper();
     private final NodeManager nodeManager;
     private final TestingArrowFlightConfig testconfig;

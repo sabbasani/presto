@@ -56,18 +56,18 @@ import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-public class TestArrowServer
+public class TestingArrowServer
         implements FlightProducer
 {
     private final RootAllocator allocator;
     private final ObjectMapper objectMapper = new ObjectMapper();
     private static Connection connection;
-    private static final Logger logger = Logger.get(TestArrowServer.class);
+    private static final Logger logger = Logger.get(TestingArrowServer.class);
 
-    public TestArrowServer(RootAllocator allocator) throws Exception
+    public TestingArrowServer(RootAllocator allocator) throws Exception
     {
         this.allocator = allocator;
-        TestH2DatabaseSetup.setup();
+        TestingH2DatabaseSetup.setup();
         this.connection = DriverManager.getConnection("jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1", "sa", "");
     }
 

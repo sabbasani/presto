@@ -24,10 +24,10 @@ import java.util.TimeZone;
 
 import static com.facebook.presto.testing.TestingSession.testSessionBuilder;
 
-public class TestArrowQueryRunner
+public class TestingArrowQueryRunner
 {
     private static DistributedQueryRunner queryRunner;
-    private TestArrowQueryRunner()
+    private TestingArrowQueryRunner()
     {
         throw new UnsupportedOperationException("This is a utility class and cannot be instantiated");
     }
@@ -54,7 +54,7 @@ public class TestArrowQueryRunner
 
         try {
             String connectorName = "arrow";
-            queryRunner.installPlugin(new ArrowPlugin(connectorName, new TestArrowModule()));
+            queryRunner.installPlugin(new ArrowPlugin(connectorName, new TestingArrowModule()));
 
             ImmutableMap.Builder<String, String> properties = ImmutableMap.<String, String>builder()
                     .putAll(catalogProperties)

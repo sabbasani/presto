@@ -44,7 +44,7 @@ public class TestArrowFlightSmoke
 
         allocator = new RootAllocator(Long.MAX_VALUE);
         serverLocation = Location.forGrpcTls("127.0.0.1", 9443);
-        server = FlightServer.builder(allocator, serverLocation, new TestArrowServer(allocator))
+        server = FlightServer.builder(allocator, serverLocation, new TestingArrowServer(allocator))
                 .useTls(certChainFile, privateKeyFile)
                 .build();
 
@@ -55,7 +55,7 @@ public class TestArrowFlightSmoke
     @Override
     protected QueryRunner createQueryRunner() throws Exception
     {
-        return TestArrowQueryRunner.createQueryRunner();
+        return TestingArrowQueryRunner.createQueryRunner();
     }
 
     @AfterClass(alwaysRun = true)
