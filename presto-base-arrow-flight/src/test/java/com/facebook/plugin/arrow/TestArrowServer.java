@@ -22,7 +22,6 @@ import org.apache.arrow.adapter.jdbc.JdbcToArrow;
 import org.apache.arrow.adapter.jdbc.JdbcToArrowConfigBuilder;
 import org.apache.arrow.flight.Action;
 import org.apache.arrow.flight.ActionType;
-import org.apache.arrow.flight.BackpressureStrategy;
 import org.apache.arrow.flight.Criteria;
 import org.apache.arrow.flight.FlightDescriptor;
 import org.apache.arrow.flight.FlightEndpoint;
@@ -51,13 +50,10 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
-import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public class TestArrowServer
@@ -66,9 +62,6 @@ public class TestArrowServer
     private final RootAllocator allocator;
     private final ObjectMapper objectMapper = new ObjectMapper();
     private static Connection connection;
-    private static final int BATCH_IDLE_TIME_MINUTES = 10;
-    private static final long BATCH_IDLE_TIME_MS = java.util.concurrent.TimeUnit.MINUTES.toMillis(BATCH_IDLE_TIME_MINUTES);
-    private static final long LISTENER_WAIT_TIME_MS = 5000;
     private static final Logger logger = Logger.get(TestArrowServer.class);
 
     public TestArrowServer(RootAllocator allocator) throws Exception
@@ -82,7 +75,6 @@ public class TestArrowServer
     public void getStream(CallContext callContext, Ticket ticket, ServerStreamListener serverStreamListener)
     {
         try (Statement stmt = connection.createStatement()) {
-
             // Convert ticket bytes to String and parse into JSON
             String ticketString = new String(ticket.getBytes(), StandardCharsets.UTF_8);
             JsonNode ticketJson = objectMapper.readTree(ticketString);
