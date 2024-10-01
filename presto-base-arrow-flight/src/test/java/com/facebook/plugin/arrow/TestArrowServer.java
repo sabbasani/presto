@@ -103,7 +103,7 @@ public class TestArrowServer
             query = query.toUpperCase(); // Optionally, to maintain consistency
 
             try (ResultSet rs = stmt.executeQuery(query)) {
-                JdbcToArrowConfigBuilder config = new JdbcToArrowConfigBuilder().setAllocator(allocator).setTargetBatchSize(3);
+                JdbcToArrowConfigBuilder config = new JdbcToArrowConfigBuilder().setAllocator(allocator).setTargetBatchSize(2048);
                 ArrowVectorIterator iterator = JdbcToArrow.sqlToArrowVectorIterator(rs, config.build());
                 AtomicBoolean firstBatch = new AtomicBoolean(true);
 
@@ -120,9 +120,6 @@ public class TestArrowServer
                             }
                             if (vectorLoader != null) {
                                 vectorLoader.load(batch);
-                            }
-                            if (newRoot != null) {
-                                logger.info("Retrieved VectorSchemaRoot with row count: %s", newRoot.getRowCount());
                             }
                             serverStreamListener.putNext();
                         }
