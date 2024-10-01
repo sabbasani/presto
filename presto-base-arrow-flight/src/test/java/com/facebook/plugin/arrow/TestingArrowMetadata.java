@@ -40,18 +40,18 @@ import java.util.Optional;
 
 import static java.util.Locale.ENGLISH;
 
-public class TestArrowMetadata
+public class TestingArrowMetadata
         extends ArrowAbstractMetadata
 {
     private static final Logger logger = Logger.get(TestArrowMetadata.class);
     private static final ObjectMapper objectMapper = new ObjectMapper();
     private final NodeManager nodeManager;
-    private final TestArrowFlightConfig testconfig;
+    private final TestingArrowFlightConfig testconfig;
     private final ArrowFlightClientHandler clientHandler;
     private final ArrowFlightConfig config;
 
     @Inject
-    public TestArrowMetadata(ArrowFlightConfig config, ArrowFlightClientHandler clientHandler, NodeManager nodeManager, TestArrowFlightConfig testconfig)
+    public TestingArrowMetadata(ArrowFlightConfig config, ArrowFlightClientHandler clientHandler, NodeManager nodeManager, TestingArrowFlightConfig testconfig)
     {
         super(config, clientHandler);
         this.nodeManager = nodeManager;
@@ -63,7 +63,7 @@ public class TestArrowMetadata
     @Override
     protected ArrowFlightRequest getArrowFlightRequest(ArrowFlightConfig config, String schema)
     {
-        return new TestArrowFlightRequest(config, schema, nodeManager.getWorkerNodes().size(), testconfig);
+        return new TestingArrowFlightRequest(config, schema, nodeManager.getWorkerNodes().size(), testconfig);
     }
 
     @Override
@@ -164,6 +164,6 @@ public class TestArrowMetadata
     @Override
     protected ArrowFlightRequest getArrowFlightRequest(ArrowFlightConfig config, Optional<String> query, String schema, String table)
     {
-        return new TestArrowFlightRequest(config, testconfig, schema, table, query, nodeManager.getWorkerNodes().size());
+        return new TestingArrowFlightRequest(config, testconfig, schema, table, query, nodeManager.getWorkerNodes().size());
     }
 }

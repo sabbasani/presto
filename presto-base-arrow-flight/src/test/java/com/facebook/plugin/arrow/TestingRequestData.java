@@ -13,27 +13,27 @@
  */
 package com.facebook.plugin.arrow;
 
-public class TestRequestData
+public class TestingRequestData
 {
-    private TestConnectionProperties connectionProperties;
-    private TestInteractionProperties interactionProperties;
+    private TestingConnectionProperties connectionProperties;
+    private TestingInteractionProperties interactionProperties;
 
-    public TestConnectionProperties getConnectionProperties()
+    public TestingConnectionProperties getConnectionProperties()
     {
         return connectionProperties;
     }
 
-    public TestInteractionProperties getInteractionProperties()
+    public TestingInteractionProperties getInteractionProperties()
     {
         return interactionProperties;
     }
 
-    public void setConnectionProperties(TestConnectionProperties connectionProperties)
+    public void setConnectionProperties(TestingConnectionProperties connectionProperties)
     {
         this.connectionProperties = connectionProperties;
     }
 
-    public void setInteractionProperties(TestInteractionProperties interactionProperties)
+    public void setInteractionProperties(TestingInteractionProperties interactionProperties)
     {
         this.interactionProperties = interactionProperties;
     }

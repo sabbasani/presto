@@ -21,15 +21,15 @@ import com.google.inject.Scopes;
 
 import static com.facebook.airlift.configuration.ConfigBinder.configBinder;
 
-public class TestArrowModule
+public class TestingArrowModule
         implements Module
 {
     @Override
     public void configure(Binder binder)
     {
-        configBinder(binder).bindConfig(TestArrowFlightConfig.class);
-        binder.bind(ConnectorSplitManager.class).to(TestArrowSplitManager.class).in(Scopes.SINGLETON);
-        binder.bind(ArrowFlightClientHandler.class).to(TestArrowFlightClientHandler.class).in(Scopes.SINGLETON);
-        binder.bind(ConnectorMetadata.class).to(TestArrowMetadata.class).in(Scopes.SINGLETON);
+        configBinder(binder).bindConfig(TestingArrowFlightConfig.class);
+        binder.bind(ConnectorSplitManager.class).to(TestingArrowSplitManager.class).in(Scopes.SINGLETON);
+        binder.bind(ArrowFlightClientHandler.class).to(TestingArrowFlightClientHandler.class).in(Scopes.SINGLETON);
+        binder.bind(ConnectorMetadata.class).to(TestingArrowMetadata.class).in(Scopes.SINGLETON);
     }
 }
