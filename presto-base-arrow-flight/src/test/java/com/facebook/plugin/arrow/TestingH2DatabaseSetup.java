@@ -56,9 +56,9 @@ import static io.airlift.tpch.TpchTable.SUPPLIER;
 import static java.lang.String.format;
 import static java.util.Collections.nCopies;
 
-public class TestH2DatabaseSetup
+public class TestingH2DatabaseSetup
 {
-    private TestH2DatabaseSetup()
+    private TestingH2DatabaseSetup()
     {
         throw new UnsupportedOperationException("This is a utility class and cannot be instantiated");
     }

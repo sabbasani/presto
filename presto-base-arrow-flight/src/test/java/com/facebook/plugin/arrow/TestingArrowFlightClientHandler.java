@@ -11,23 +11,26 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package com.facebook.plugin.arrow;
 
-import com.facebook.presto.spi.connector.ConnectorFactory;
-import org.testng.annotations.Test;
+import com.facebook.presto.spi.ConnectorSession;
+import org.apache.arrow.flight.auth2.BearerCredentialWriter;
+import org.apache.arrow.flight.grpc.CredentialCallOption;
 
-import static com.facebook.airlift.testing.Assertions.assertInstanceOf;
-import static com.google.common.collect.Iterables.getOnlyElement;
+import javax.inject.Inject;
 
-public class TestArrowPlugin
+public class TestingArrowFlightClientHandler
+        extends ArrowFlightClientHandler
 {
-    @Test
-    public void testStartup()
+    @Inject
+    public TestingArrowFlightClientHandler(ArrowFlightConfig config)
     {
-        ArrowModule testModule = new ArrowModule("arrow-flight");
-        ArrowPlugin plugin = new ArrowPlugin("arrow-flight", testModule);
-        ConnectorFactory factory = getOnlyElement(plugin.getConnectorFactories());
-        assertInstanceOf(factory, ArrowConnectorFactory.class);
+        super(config);
+    }
+
+    @Override
+    protected CredentialCallOption getCallOptions(ConnectorSession connectorSession)
+    {
+        return new CredentialCallOption(new BearerCredentialWriter(null));
     }
 }

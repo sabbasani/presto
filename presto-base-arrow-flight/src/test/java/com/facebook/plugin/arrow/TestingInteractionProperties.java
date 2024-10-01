@@ -15,7 +15,7 @@ package com.facebook.plugin.arrow;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 
-public class TestInteractionProperties
+public class TestingInteractionProperties
 {
     @JsonProperty("select_statement")
     private String selectStatement;

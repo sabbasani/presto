@@ -32,7 +32,10 @@ import org.apache.arrow.flight.PutResult;
 import org.apache.arrow.flight.Result;
 import org.apache.arrow.flight.Ticket;
 import org.apache.arrow.memory.RootAllocator;
+import org.apache.arrow.vector.VectorLoader;
 import org.apache.arrow.vector.VectorSchemaRoot;
+import org.apache.arrow.vector.VectorUnloader;
+import org.apache.arrow.vector.ipc.message.ArrowRecordBatch;
 import org.apache.arrow.vector.types.DateUnit;
 import org.apache.arrow.vector.types.FloatingPointPrecision;
 import org.apache.arrow.vector.types.TimeUnit;
@@ -47,33 +50,31 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
-import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
 
-public class TestArrowServer
+public class TestingArrowServer
         implements FlightProducer
 {
     private final RootAllocator allocator;
     private final ObjectMapper objectMapper = new ObjectMapper();
-
     private static Connection connection;
+    private static final Logger logger = Logger.get(TestingArrowServer.class);
 
-    private static final Logger logger = Logger.get(TestArrowServer.class);
-
-    public TestArrowServer(RootAllocator allocator) throws Exception
+    public TestingArrowServer(RootAllocator allocator) throws Exception
     {
         this.allocator = allocator;
-        TestH2DatabaseSetup.setup();
+        TestingH2DatabaseSetup.setup();
         this.connection = DriverManager.getConnection("jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1", "sa", "");
     }
 
     @Override
     public void getStream(CallContext callContext, Ticket ticket, ServerStreamListener serverStreamListener)
     {
-        try {
+        try (Statement stmt = connection.createStatement()) {
             // Convert ticket bytes to String and parse into JSON
             String ticketString = new String(ticket.getBytes(), StandardCharsets.UTF_8);
             JsonNode ticketJson = objectMapper.readTree(ticketString);
@@ -93,39 +94,40 @@ public class TestArrowServer
             logger.info("Executing query: " + query);
             query = query.toUpperCase(); // Optionally, to maintain consistency
 
-            // Execute the query and convert result set to Arrow format
-            try (Statement stmt = connection.createStatement()) {
-                ResultSet rs = stmt.executeQuery(query);
-
-                JdbcToArrowConfigBuilder config = new JdbcToArrowConfigBuilder().setAllocator(allocator).setTargetBatchSize(5000000);
+            try (ResultSet rs = stmt.executeQuery(query)) {
+                JdbcToArrowConfigBuilder config = new JdbcToArrowConfigBuilder().setAllocator(allocator).setTargetBatchSize(2048);
                 ArrowVectorIterator iterator = JdbcToArrow.sqlToArrowVectorIterator(rs, config.build());
+                AtomicBoolean firstBatch = new AtomicBoolean(true);
 
-                // Stream the Arrow data using ServerStreamListener
+                VectorLoader vectorLoader = null;
+                VectorSchemaRoot newRoot = null;
                 while (iterator.hasNext()) {
                     try (VectorSchemaRoot root = iterator.next()) {
-                        serverStreamListener.start(root);
-                        int rowCount = root.getRowCount();
-                        System.out.println("Retrieved VectorSchemaRoot with row count: " + rowCount);
-
-                        serverStreamListener.putNext();
+                        VectorUnloader vectorUnloader = new VectorUnloader(root);
+                        try (ArrowRecordBatch batch = vectorUnloader.getRecordBatch()) {
+                            if (firstBatch.getAndSet(false)) {
+                                newRoot = VectorSchemaRoot.create(root.getSchema(), allocator);
+                                vectorLoader = new VectorLoader(newRoot);
+                                serverStreamListener.start(newRoot);
+                            }
+                            if (vectorLoader != null) {
+                                vectorLoader.load(batch);
+                            }
+                            serverStreamListener.putNext();
+                        }
                     }
                 }
-
-                // Mark the stream as completed
+                if (newRoot != null) {
+                    newRoot.close();
+                }
                 serverStreamListener.completed();
             }
-            // Handle SQL exceptions
-            catch (SQLException e) {
-                logger.error("SQL query execution failed", e);
-                serverStreamListener.error(e);
-                throw new RuntimeException("Failed to execute query", e);
-            }
-            // Handle Arrow processing errors
-            catch (IOException e) {
-                logger.error("Arrow data processing failed", e);
-                serverStreamListener.error(e);
-                throw new RuntimeException("Failed to process Arrow data", e);
-            }
+        }
+        // Handle Arrow processing errors
+        catch (IOException e) {
+            logger.error("Arrow data processing failed", e);
+            serverStreamListener.error(e);
+            throw new RuntimeException("Failed to process Arrow data", e);
         }
         // Handle all other exceptions, including parsing errors
         catch (Exception e) {

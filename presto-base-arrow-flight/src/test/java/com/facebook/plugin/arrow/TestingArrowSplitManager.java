@@ -20,15 +20,15 @@ import javax.inject.Inject;
 
 import java.util.Optional;
 
-public class TestArrowSplitManager
+public class TestingArrowSplitManager
         extends ArrowAbstractSplitManager
 {
-    private TestArrowFlightConfig testconfig;
+    private TestingArrowFlightConfig testconfig;
 
     private final NodeManager nodeManager;
 
     @Inject
-    public TestArrowSplitManager(ArrowFlightClientHandler client, TestArrowFlightConfig testconfig, NodeManager nodeManager)
+    public TestingArrowSplitManager(ArrowFlightClientHandler client, TestingArrowFlightConfig testconfig, NodeManager nodeManager)
     {
         super(client);
         this.testconfig = testconfig;
@@ -39,10 +39,10 @@ public class TestArrowSplitManager
     protected ArrowFlightRequest getArrowFlightRequest(ArrowFlightConfig config, ArrowTableLayoutHandle tableLayoutHandle)
     {
         ArrowTableHandle tableHandle = tableLayoutHandle.getTableHandle();
-        Optional<String> query = Optional.of(new TestArrowQueryBuilder().buildSql(tableHandle.getSchema(),
+        Optional<String> query = Optional.of(new TestingArrowQueryBuilder().buildSql(tableHandle.getSchema(),
                 tableHandle.getTable(),
                 tableLayoutHandle.getColumnHandles(), ImmutableMap.of(),
                 tableLayoutHandle.getTupleDomain()));
-        return new TestArrowFlightRequest(config, testconfig, tableHandle.getSchema(), tableHandle.getTable(), query, nodeManager.getWorkerNodes().size());
+        return new TestingArrowFlightRequest(config, testconfig, tableHandle.getSchema(), tableHandle.getTable(), query, nodeManager.getWorkerNodes().size());
     }
 }
