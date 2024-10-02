@@ -153,7 +153,10 @@ public class ArrowPageSource
     @Override
     public void close()
     {
-        vectorSchemaRoot.ifPresent(VectorSchemaRoot::close);
+        if (vectorSchemaRoot.isPresent()) {
+            vectorSchemaRoot.get().close();
+            vectorSchemaRoot = Optional.empty();
+        }
         if (flightStream != null) {
             try {
                 flightStream.close();
@@ -178,7 +181,7 @@ public class ArrowPageSource
         try {
             Optional<String> uri = (split == null || split.getLocationUrls().isEmpty()) ?
                     Optional.empty() : Optional.of(split.getLocationUrls().get(0));
-            ArrowFlightClient flightClient = clientHandler.getClient(uri);
+            flightClient = clientHandler.getClient(uri);
             flightStream = flightClient.getFlightClient().getStream(new Ticket(ticket), clientHandler.getCallOptions(connectorSession));
         }
         catch (FlightRuntimeException e) {
