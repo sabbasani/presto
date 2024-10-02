@@ -351,6 +351,11 @@ public final class SystemSessionProperties
     private static final String NATIVE_EXECUTION_PROGRAM_ARGUMENTS = "native_execution_program_arguments";
     public static final String NATIVE_EXECUTION_PROCESS_REUSE_ENABLED = "native_execution_process_reuse_enabled";
     public static final String NATIVE_DEBUG_VALIDATE_OUTPUT_FROM_OPERATORS = "native_debug_validate_output_from_operators";
+    public static final String NATIVE_DEBUG_DISABLE_EXPRESSION_WITH_PEELING = "native_debug_disable_expression_with_peeling";
+    public static final String NATIVE_DEBUG_DISABLE_COMMON_SUB_EXPRESSION = "native_debug_disable_common_sub_expressions";
+    public static final String NATIVE_DEBUG_DISABLE_EXPRESSION_WITH_MEMOIZATION = "native_debug_disable_expression_with_memoization";
+    public static final String NATIVE_DEBUG_DISABLE_EXPRESSION_WITH_LAZY_INPUTS = "native_debug_disable_expression_with_lazy_inputs";
+    public static final String NATIVE_SELECTIVE_NIMBLE_READER_ENABLED = "native_selective_nimble_reader_enabled";
 
     public static final String NATIVE_MAX_PARTIAL_AGGREGATION_MEMORY = "native_max_partial_aggregation_memory";
     public static final String NATIVE_MAX_EXTENDED_PARTIAL_AGGREGATION_MEMORY = "native_max_extended_partial_aggregation_memory";
@@ -515,7 +520,7 @@ public final class SystemSessionProperties
                         Integer.class,
                         taskManagerConfig.getWriterCount(),
                         false,
-                        value -> validateValueIsPowerOfTwo(requireNonNull(value, "value is null"), TASK_WRITER_COUNT),
+                        featuresConfig.isNativeExecutionEnabled() ? value -> validateNullablePositiveIntegerValue(value, TASK_WRITER_COUNT) : value -> validateValueIsPowerOfTwo(value, TASK_WRITER_COUNT),
                         value -> value),
                 new PropertyMetadata<>(
                         TASK_PARTITIONED_WRITER_COUNT,
@@ -524,7 +529,7 @@ public final class SystemSessionProperties
                         Integer.class,
                         taskManagerConfig.getPartitionedWriterCount(),
                         false,
-                        value -> validateValueIsPowerOfTwo(value, TASK_PARTITIONED_WRITER_COUNT),
+                        featuresConfig.isNativeExecutionEnabled() ? value -> validateNullablePositiveIntegerValue(value, TASK_PARTITIONED_WRITER_COUNT) : value -> validateValueIsPowerOfTwo(value, TASK_PARTITIONED_WRITER_COUNT),
                         value -> value),
                 booleanProperty(
                         REDISTRIBUTE_WRITES,
@@ -1718,6 +1723,39 @@ public final class SystemSessionProperties
                                 "so should only be used for debugging. It can help debug issues where " +
                                 "malformed vector cause failures or crashes by helping identify which " +
                                 "operator is generating them.",
+                        false,
+                        true),
+                booleanProperty(
+                        NATIVE_DEBUG_DISABLE_EXPRESSION_WITH_PEELING,
+                        "If set to true, disables optimization in expression evaluation to peel common " +
+                                "dictionary layer from inputs. Should only be used for debugging.",
+                        false,
+                        true),
+                booleanProperty(
+                        NATIVE_DEBUG_DISABLE_COMMON_SUB_EXPRESSION,
+                        "If set to true, disables optimization in expression evaluation to reuse cached " +
+                                "results for common sub-expressions. Should only be used for debugging.",
+                        false,
+                        true),
+                booleanProperty(
+                        NATIVE_DEBUG_DISABLE_EXPRESSION_WITH_MEMOIZATION,
+                        "If set to true, disables optimization in expression evaluation to reuse cached " +
+                                "results between subsequent input batches that are dictionary encoded and " +
+                                "have the same alphabet(underlying flat vector). Should only be used for " +
+                                "debugging.",
+                        false,
+                        true),
+                booleanProperty(
+                        NATIVE_DEBUG_DISABLE_EXPRESSION_WITH_LAZY_INPUTS,
+                        "If set to true, disables optimization in expression evaluation to delay loading " +
+                                "of lazy inputs unless required. Should only be used for debugging.",
+                        false,
+                        true),
+                booleanProperty(
+                        NATIVE_SELECTIVE_NIMBLE_READER_ENABLED,
+                        "Temporary flag to control whether selective Nimble reader should be " +
+                        "used in this query or not.  Will be removed after the selective Nimble " +
+                        "reader is fully rolled out.",
                         false,
                         true),
                 longProperty(
