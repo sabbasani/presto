@@ -13,6 +13,7 @@
  */
 package com.facebook.plugin.arrow;
 
+import com.facebook.airlift.log.Logger;
 import com.facebook.presto.common.type.Type;
 import com.facebook.presto.common.type.VarcharType;
 import com.facebook.presto.spi.ColumnMetadata;
@@ -34,8 +35,10 @@ import java.sql.Date;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.Statement;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 import static com.facebook.presto.common.type.BigintType.BIGINT;
 import static com.facebook.presto.common.type.BooleanType.BOOLEAN;
@@ -58,6 +61,7 @@ import static java.util.Collections.nCopies;
 
 public class TestingH2DatabaseSetup
 {
+    private static final Logger logger = Logger.get(TestingH2DatabaseSetup.class);
     private TestingH2DatabaseSetup()
     {
         throw new UnsupportedOperationException("This is a utility class and cannot be instantiated");
@@ -74,13 +78,9 @@ public class TestingH2DatabaseSetup
         Jdbi jdbi = Jdbi.create(dbUrl, "sa", "");
         Handle handle = jdbi.open(); // Get a handle for the database connection
 
-        System.out.println("0.0");
-
         TpchMetadata tpchMetadata = new TpchMetadata("");
 
         Statement stmt = conn.createStatement();
-
-        System.out.println("0");
 
         // Create schema
         stmt.execute("CREATE SCHEMA IF NOT EXISTS testdb");
@@ -96,8 +96,6 @@ public class TestingH2DatabaseSetup
         stmt.execute("CREATE TABLE IF NOT EXISTS testdb.example_table3 (id INT PRIMARY KEY, created_at INT, status VARCHAR(255))");
         stmt.execute("INSERT INTO testdb.example_table3 (id, created_at, status) VALUES (1, 36000000, 'A'), (2, 38000000, 'B')");
 
-        System.out.println("1");
-
         stmt.execute("CREATE TABLE testdb.orders (\n" +
                 "  orderkey BIGINT PRIMARY KEY,\n" +
                 "  custkey BIGINT NOT NULL,\n" +
@@ -111,8 +109,6 @@ public class TestingH2DatabaseSetup
                 ")");
         stmt.execute("CREATE INDEX custkey_index ON testdb.orders (custkey)");
         insertRows(tpchMetadata, ORDERS, handle);
-
-        System.out.println("2");
 
         handle.execute("CREATE TABLE testdb.lineitem (\n" +
                 "  orderkey BIGINT,\n" +
@@ -135,8 +131,6 @@ public class TestingH2DatabaseSetup
                 ")");
         insertRows(tpchMetadata, LINE_ITEM, handle);
 
-        System.out.println("3");
-
         handle.execute(" CREATE TABLE testdb.partsupp (\n" +
                 "  partkey BIGINT NOT NULL,\n" +
                 "  suppkey BIGINT NOT NULL,\n" +
@@ -147,8 +141,6 @@ public class TestingH2DatabaseSetup
                 ")");
         insertRows(tpchMetadata, PART_SUPPLIER, handle);
 
-        System.out.println("4");
-
         handle.execute("CREATE TABLE testdb.nation (\n" +
                 "  nationkey BIGINT PRIMARY KEY,\n" +
                 "  name VARCHAR(25) NOT NULL,\n" +
@@ -157,15 +149,12 @@ public class TestingH2DatabaseSetup
                 ")");
         insertRows(tpchMetadata, NATION, handle);
 
-        System.out.println("5");
-
         handle.execute("CREATE TABLE testdb.region(\n" +
                 "  regionkey BIGINT PRIMARY KEY,\n" +
                 "  name VARCHAR(25) NOT NULL,\n" +
                 "  comment VARCHAR(115) NOT NULL\n" +
                 ")");
         insertRows(tpchMetadata, REGION, handle);
-        System.out.println("6");
         handle.execute("CREATE TABLE testdb.part(\n" +
                 "  partkey BIGINT PRIMARY KEY,\n" +
                 "  name VARCHAR(55) NOT NULL,\n" +
@@ -178,7 +167,6 @@ public class TestingH2DatabaseSetup
                 "  comment VARCHAR(23) NOT NULL\n" +
                 ")");
         insertRows(tpchMetadata, PART, handle);
-        System.out.println("7");
         handle.execute(" CREATE TABLE testdb.customer (     \n" +
                 "    custkey BIGINT NOT NULL,         \n" +
                 "    name VARCHAR(25) NOT NULL,       \n" +
@@ -190,7 +178,6 @@ public class TestingH2DatabaseSetup
                 "    comment VARCHAR(117) NOT NULL    \n" +
                 " ) ");
         insertRows(tpchMetadata, CUSTOMER, handle);
-        System.out.println("8");
         handle.execute(" CREATE TABLE testdb.supplier ( \n" +
                 "    suppkey bigint NOT NULL,         \n" +
                 "    name varchar(25) NOT NULL,       \n" +
@@ -201,27 +188,22 @@ public class TestingH2DatabaseSetup
                 "    comment varchar(101) NOT NULL    \n" +
                 " ) ");
         insertRows(tpchMetadata, SUPPLIER, handle);
-        System.out.println("9");
-//        ResultSet resultSet = stmt.executeQuery("SELECT COUNT(*) FROM SUPPLIER");
 
-//        if (resultSet.next()) {
-//            int count = resultSet.getInt(1); // Get the first column of the result
-//            System.out.println("Number of rows in SUPPLIER table: " + count);
-//        }
         ResultSet resultSet1 = stmt.executeQuery("SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = 'TESTDB'");
-
-        System.out.println("Tables in 'testdb' schema:");
+        List<String> tables = new ArrayList<>();
         while (resultSet1.next()) {
             String tableName = resultSet1.getString("TABLE_NAME");
-            System.out.println(tableName);
+            tables.add(tableName);
         }
+        logger.info("Tables in 'testdb' schema: %s", tables.stream().collect(Collectors.joining(", ")));
 
         ResultSet resultSet = stmt.executeQuery("SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA");
-        System.out.println("Schemas:");
+        List<String> schemas = new ArrayList<>();
         while (resultSet.next()) {
             String schemaName = resultSet.getString("SCHEMA_NAME");
-            System.out.println(schemaName);
+            schemas.add(schemaName);
         }
+        logger.info("Schemas: %s", schemas.stream().collect(Collectors.joining(", ")));
     }
 
     private static void insertRows(TpchMetadata tpchMetadata, TpchTable tpchTable, Handle handle)
