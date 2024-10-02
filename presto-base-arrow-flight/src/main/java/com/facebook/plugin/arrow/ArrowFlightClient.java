@@ -16,12 +16,14 @@ package com.facebook.plugin.arrow;
 import org.apache.arrow.flight.FlightClient;
 import org.apache.arrow.memory.RootAllocator;
 
+import java.io.IOException;
 import java.io.InputStream;
 import java.util.Optional;
 
 import static java.util.Objects.requireNonNull;
 
 public class ArrowFlightClient
+        implements AutoCloseable
 {
     private final FlightClient flightClient;
     private final Optional<InputStream> trustedCertificate;
@@ -44,7 +46,8 @@ public class ArrowFlightClient
         return trustedCertificate;
     }
 
-    public void close() throws Exception
+    @Override
+    public void close() throws InterruptedException, IOException
     {
         flightClient.close();
         if (trustedCertificate.isPresent()) {
