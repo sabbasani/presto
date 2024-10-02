@@ -32,14 +32,13 @@ public abstract class ArrowFlightClientHandler
 {
     private static final Logger logger = Logger.get(ArrowFlightClientHandler.class);
     private final ArrowFlightConfig config;
-    private ArrowFlightClient arrowFlightClient;
 
     public ArrowFlightClientHandler(ArrowFlightConfig config)
     {
         this.config = config;
     }
 
-    private void initializeClient(Optional<String> uri)
+    private ArrowFlightClient initializeClient(Optional<String> uri)
     {
         try {
             RootAllocator allocator = new RootAllocator(Long.MAX_VALUE);
@@ -70,7 +69,7 @@ public abstract class ArrowFlightClientHandler
             }
 
             FlightClient flightClient = flightClientBuilder.build();
-            this.arrowFlightClient = new ArrowFlightClient(flightClient, trustedCertificate, allocator);
+            return new ArrowFlightClient(flightClient, trustedCertificate, allocator);
         }
         catch (Exception ex) {
             throw new ArrowException(ARROW_FLIGHT_ERROR, "The flight client could not be obtained." + ex.getMessage(), ex);
@@ -84,13 +83,12 @@ public abstract class ArrowFlightClientHandler
 
     public ArrowFlightClient getClient(Optional<String> uri)
     {
-        initializeClient(uri);
-        return this.arrowFlightClient;
+        return initializeClient(uri);
     }
+
     public FlightInfo getFlightInfo(ArrowFlightRequest request, ConnectorSession connectorSession)
     {
-        try {
-            ArrowFlightClient client = getClient(Optional.empty());
+        try (ArrowFlightClient client = getClient(Optional.empty())) {
             CredentialCallOption auth = this.getCallOptions(connectorSession);
             FlightDescriptor descriptor = FlightDescriptor.command(request.getCommand());
             logger.debug("Fetching flight info");
@@ -101,17 +99,7 @@ public abstract class ArrowFlightClientHandler
         catch (Exception e) {
             throw new ArrowException(ARROW_FLIGHT_ERROR, "The flight information could not be obtained from the flight server." + e.getMessage(), e);
         }
-        finally {
-            try {
-                if (arrowFlightClient != null) {
-                    arrowFlightClient.close();
-                    arrowFlightClient = null;
-                }
-            }
-            catch (Exception ex) {
-                logger.error("Failed to close the flight client: %s", ex.getMessage(), ex);
-            }
-        }
     }
+
     protected abstract CredentialCallOption getCallOptions(ConnectorSession connectorSession);
 }
