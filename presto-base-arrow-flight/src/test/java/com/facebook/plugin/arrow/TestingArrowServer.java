@@ -97,7 +97,7 @@ public class TestingArrowServer
             try (ResultSet rs = stmt.executeQuery(query)) {
                 JdbcToArrowConfigBuilder config = new JdbcToArrowConfigBuilder().setAllocator(allocator).setTargetBatchSize(2048);
                 ArrowVectorIterator iterator = JdbcToArrow.sqlToArrowVectorIterator(rs, config.build());
-                AtomicBoolean firstBatch = new AtomicBoolean(true);
+                boolean firstBatch = true;
 
                 VectorLoader vectorLoader = null;
                 VectorSchemaRoot newRoot = null;
@@ -105,7 +105,8 @@ public class TestingArrowServer
                     try (VectorSchemaRoot root = iterator.next()) {
                         VectorUnloader vectorUnloader = new VectorUnloader(root);
                         try (ArrowRecordBatch batch = vectorUnloader.getRecordBatch()) {
-                            if (firstBatch.getAndSet(false)) {
+                            if (firstBatch) {
+                                firstBatch = false;
                                 newRoot = VectorSchemaRoot.create(root.getSchema(), allocator);
                                 vectorLoader = new VectorLoader(newRoot);
                                 serverStreamListener.start(newRoot);
