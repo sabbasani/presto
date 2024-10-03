@@ -67,15 +67,13 @@ public class TestingH2DatabaseSetup
         throw new UnsupportedOperationException("This is a utility class and cannot be instantiated");
     }
 
-    public static void setup() throws Exception
+    public static void setup(String h2JdbcUrl) throws Exception
     {
         Class.forName("org.h2.Driver");
 
-        String dbUrl = "jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1";
+        Connection conn = DriverManager.getConnection(h2JdbcUrl, "sa", "");
 
-        Connection conn = DriverManager.getConnection(dbUrl, "sa", "");
-
-        Jdbi jdbi = Jdbi.create(dbUrl, "sa", "");
+        Jdbi jdbi = Jdbi.create(h2JdbcUrl, "sa", "");
         Handle handle = jdbi.open(); // Get a handle for the database connection
 
         TpchMetadata tpchMetadata = new TpchMetadata("");
