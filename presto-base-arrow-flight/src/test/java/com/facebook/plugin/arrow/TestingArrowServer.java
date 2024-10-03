@@ -54,6 +54,7 @@ import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.ThreadLocalRandom;
 
 public class TestingArrowServer
         implements FlightProducer
@@ -66,8 +67,9 @@ public class TestingArrowServer
     public TestingArrowServer(RootAllocator allocator) throws Exception
     {
         this.allocator = allocator;
-        TestingH2DatabaseSetup.setup();
-        this.connection = DriverManager.getConnection("jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1", "sa", "");
+        String h2JdbcUrl = "jdbc:h2:mem:testdb" + System.nanoTime() + "_" + ThreadLocalRandom.current().nextInt() + ";DB_CLOSE_DELAY=-1";
+        TestingH2DatabaseSetup.setup(h2JdbcUrl);
+        this.connection = DriverManager.getConnection(h2JdbcUrl, "sa", "");
     }
 
     @Override
