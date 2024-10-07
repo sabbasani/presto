@@ -21,7 +21,7 @@ import javax.inject.Inject;
 import java.util.Optional;
 
 public class TestingArrowSplitManager
-        extends ArrowAbstractSplitManager
+        extends AbstractArrowSplitManager
 {
     private TestingArrowFlightConfig testconfig;
 

@@ -57,14 +57,14 @@ import java.util.Set;
 import static com.facebook.plugin.arrow.ArrowErrorCode.ARROW_FLIGHT_ERROR;
 import static java.util.Objects.requireNonNull;
 
-public abstract class ArrowAbstractMetadata
+public abstract class AbstractArrowMetadata
         implements ConnectorMetadata
 {
-    private static final Logger logger = Logger.get(ArrowAbstractMetadata.class);
+    private static final Logger logger = Logger.get(AbstractArrowMetadata.class);
     private final ArrowFlightConfig config;
     private final ArrowFlightClientHandler clientHandler;
 
-    public ArrowAbstractMetadata(ArrowFlightConfig config, ArrowFlightClientHandler clientHandler)
+    public AbstractArrowMetadata(ArrowFlightConfig config, ArrowFlightClientHandler clientHandler)
     {
         this.config = config;
         this.clientHandler = requireNonNull(clientHandler);

@@ -53,7 +53,9 @@ import java.sql.ResultSetMetaData;
 import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ThreadLocalRandom;
 
 public class TestingArrowServer
@@ -157,7 +159,7 @@ public class TestingArrowServer
 
             List<Field> fields = new ArrayList<>();
             if (schemaName != null && tableName != null) {
-                String query = "SELECT COLUMN_NAME, DATA_TYPE FROM INFORMATION_SCHEMA.COLUMNS " +
+                String query = "SELECT COLUMN_NAME, DATA_TYPE, CHARACTER_MAXIMUM_LENGTH FROM INFORMATION_SCHEMA.COLUMNS " +
                         "WHERE TABLE_SCHEMA='" + schemaName.toUpperCase() + "' " +
                         "AND TABLE_NAME='" + tableName.toUpperCase() + "'";
 
@@ -165,9 +167,16 @@ public class TestingArrowServer
                     while (rs.next()) {
                         String columnName = rs.getString("COLUMN_NAME");
                         String dataType = rs.getString("DATA_TYPE");
+                        String charMaxLength = rs.getString("CHARACTER_MAXIMUM_LENGTH");
 
                         ArrowType arrowType = convertSqlTypeToArrowType(dataType);
-                        Field field = new Field(columnName, FieldType.nullable(arrowType), null);
+                        Map<String, String> metaDataMap = new HashMap<>();
+                        metaDataMap.put("columnNativeType", dataType);
+                        if (charMaxLength != null) {
+                            metaDataMap.put("columnLength", charMaxLength);
+                        }
+                        FieldType fieldType = new FieldType(true, arrowType, null, metaDataMap);
+                        Field field = new Field(columnName, fieldType, null);
                         fields.add(field);
                     }
                 }

@@ -226,10 +226,10 @@ public class ArrowPageSource
         }
         else if (vector instanceof VarCharVector) {
             if (type instanceof CharType) {
-                return buildBlockCharType((VarCharVector) vector, type);
+                return buildCharTypeBlockFromVarcharVector((VarCharVector) vector, type);
             }
             else if (type instanceof TimeType) {
-                return buildBlockTimeType((VarCharVector) vector, type);
+                return buildTimeTypeBlockFromVarcharVector((VarCharVector) vector, type);
             }
             else {
                 return buildBlockFromVarCharVector((VarCharVector) vector, type);
@@ -584,7 +584,7 @@ public class ArrowPageSource
         return builder.build();
     }
 
-    private Block buildBlockCharType(VarCharVector vector, Type type)
+    private Block buildCharTypeBlockFromVarcharVector(VarCharVector vector, Type type)
     {
         BlockBuilder builder = type.createBlockBuilder(null, vector.getValueCount());
         for (int i = 0; i < vector.getValueCount(); i++) {
@@ -599,7 +599,7 @@ public class ArrowPageSource
         return builder.build();
     }
 
-    private Block buildBlockTimeType(VarCharVector vector, Type type)
+    private Block buildTimeTypeBlockFromVarcharVector(VarCharVector vector, Type type)
     {
         BlockBuilder builder = type.createBlockBuilder(null, vector.getValueCount());
         for (int i = 0; i < vector.getValueCount(); i++) {

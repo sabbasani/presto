@@ -26,13 +26,13 @@ import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
-public abstract class ArrowAbstractSplitManager
+public abstract class AbstractArrowSplitManager
         implements ConnectorSplitManager
 {
-    private static final Logger logger = Logger.get(ArrowAbstractSplitManager.class);
+    private static final Logger logger = Logger.get(AbstractArrowSplitManager.class);
     private final ArrowFlightClientHandler clientHandler;
 
-    public ArrowAbstractSplitManager(ArrowFlightClientHandler client)
+    public AbstractArrowSplitManager(ArrowFlightClientHandler client)
     {
         this.clientHandler = client;
     }
