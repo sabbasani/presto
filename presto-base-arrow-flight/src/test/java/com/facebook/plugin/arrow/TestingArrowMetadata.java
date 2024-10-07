@@ -41,7 +41,7 @@ import java.util.Optional;
 import static java.util.Locale.ENGLISH;
 
 public class TestingArrowMetadata
-        extends ArrowAbstractMetadata
+        extends AbstractArrowMetadata
 {
     private static final Logger logger = Logger.get(TestingArrowMetadata.class);
     private static final ObjectMapper objectMapper = new ObjectMapper();
