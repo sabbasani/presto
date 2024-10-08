@@ -45,7 +45,6 @@ public class TestingArrowQueryRunner
         Session session = testSessionBuilder()
                 .setCatalog("arrow")
                 .setSchema("testdb")
-                .setTimeZoneKey(TimeZoneKey.getTimeZoneKey(TimeZone.getDefault().getID()))
                 .build();
 
         if (queryRunner == null) {
