@@ -52,4 +52,10 @@ public class ArrowColumnHandle
     {
         return new ColumnMetadata(columnName, columnType);
     }
+
+    @Override
+    public String toString()
+    {
+        return columnName + ":" + columnType;
+    }
 }

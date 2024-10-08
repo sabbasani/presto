@@ -57,4 +57,10 @@ public class ArrowTableLayoutHandle
     {
         return columnHandles;
     }
+
+    @Override
+    public String toString()
+    {
+        return "tableHandle:" + tableHandle + ", columnHandles:" + columnHandles + ", tupleDomain:" + tupleDomain;
+    }
 }
