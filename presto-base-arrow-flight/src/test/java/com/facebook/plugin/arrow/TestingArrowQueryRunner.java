@@ -15,12 +15,10 @@
 package com.facebook.plugin.arrow;
 
 import com.facebook.presto.Session;
-import com.facebook.presto.common.type.TimeZoneKey;
 import com.facebook.presto.tests.DistributedQueryRunner;
 import com.google.common.collect.ImmutableMap;
 
 import java.util.Map;
-import java.util.TimeZone;
 
 import static com.facebook.presto.testing.TestingSession.testSessionBuilder;
 

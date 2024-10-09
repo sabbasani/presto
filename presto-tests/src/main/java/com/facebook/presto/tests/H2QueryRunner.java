@@ -44,8 +44,9 @@ import org.jdbi.v3.core.statement.ParsedSql;
 import org.jdbi.v3.core.statement.PreparedBatch;
 import org.jdbi.v3.core.statement.SqlParser;
 import org.jdbi.v3.core.statement.StatementContext;
-import org.jetbrains.annotations.Nullable;
 import org.joda.time.DateTimeZone;
+
+import javax.annotation.Nullable;
 
 import java.math.BigDecimal;
 import java.math.MathContext;
@@ -462,7 +463,8 @@ public class H2QueryRunner
         return null;
     }
 
-    private static Object[] mapRowValues(RowType rowType, Object[] values) {
+    private static Object[] mapRowValues(RowType rowType, Object[] values)
+    {
         int fieldCount = rowType.getFields().size();
         Object[] fields = new Object[fieldCount];
 
@@ -471,10 +473,12 @@ public class H2QueryRunner
             if (fieldType instanceof RowType) {
                 // Recursively map RowType values
                 fields[j] = Arrays.asList(mapRowValues((RowType) fieldType, (Object[]) values[j]));
-            } else if (values[j] != null && values[j].getClass().isArray()) {
+            }
+            else if (values[j] != null && values[j].getClass().isArray()) {
                 // Convert arrays to lists for proper comparison
                 fields[j] = Arrays.asList((Object[]) values[j]);
-            } else {
+            }
+            else {
                 // Assign value directly if not a nested row or array
                 fields[j] = values[j];
             }
@@ -482,7 +486,8 @@ public class H2QueryRunner
         return fields;
     }
 
-    private static Object mapRowOrResultSet(Object value, RowType rowType) {
+    private static Object mapRowOrResultSet(Object value, RowType rowType)
+    {
         if (value == null) {
             return null;
         }
@@ -496,7 +501,8 @@ public class H2QueryRunner
         if (value instanceof ResultSet) {
             try {
                 return handleResultSet((ResultSet) value, rowType);
-            } catch (SQLException e) {
+            }
+            catch (SQLException e) {
                 // Handle SQL exceptions properly
                 e.printStackTrace();
                 return null;

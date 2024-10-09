@@ -28,7 +28,6 @@ import org.testng.annotations.Test;
 
 import java.io.File;
 
-import static com.facebook.presto.SystemSessionProperties.LEGACY_UNNEST;
 import static com.facebook.presto.common.type.BigintType.BIGINT;
 import static com.facebook.presto.common.type.BooleanType.BOOLEAN;
 import static com.facebook.presto.common.type.VarcharType.VARCHAR;
@@ -146,55 +145,6 @@ public class TestArrowFlightSmoke
         assertEquals(getQueryRunner().execute(query).getRowCount(), 2);
     }
 
-    @Test
-    public void testCorrelatedScalarSubqueries()
-    {
-        assertQuery("SELECT (SELECT n.nationkey + n.NATIONKEY) FROM nation n");
-        assertQuery("SELECT (SELECT 2 * n.nationkey) FROM nation n");
-        assertQuery("SELECT nationkey FROM nation n WHERE 2 = (SELECT 2 * n.nationkey)");
-        assertQuery("SELECT nationkey FROM nation n ORDER BY (SELECT 2 * n.nationkey)");
-
-        // group by
-        assertQuery("SELECT max(n.regionkey), 2 * n.nationkey, (SELECT n.nationkey) FROM nation n GROUP BY n.nationkey");
-        assertQuery(
-                "SELECT max(l.quantity), 2 * l.orderkey FROM lineitem l GROUP BY l.orderkey HAVING max(l.quantity) < (SELECT l.orderkey)");
-        assertQuery("SELECT max(l.quantity), 2 * l.orderkey FROM lineitem l GROUP BY l.orderkey, (SELECT l.orderkey)");
-
-        // join
-        assertQuery("SELECT * FROM nation n1 JOIN nation n2 ON n1.nationkey = (SELECT n2.nationkey)");
-        assertQueryFails(
-                "SELECT (SELECT l3.* FROM lineitem l2 CROSS JOIN (SELECT l1.orderkey) l3 LIMIT 1) FROM lineitem l1",
-                UNSUPPORTED_CORRELATED_SUBQUERY_ERROR_MSG);
-
-        // subrelation
-        assertQuery(
-                "SELECT 1 FROM nation n WHERE 2 * nationkey - 1  = (SELECT * FROM (SELECT n.nationkey))",
-                "SELECT 1"); // h2 fails to parse this query
-
-        // two level of nesting
-        assertQuery("SELECT * FROM nation n WHERE 2 = (SELECT (SELECT 2 * n.nationkey))");
-
-        // explicit LIMIT in subquery
-        assertQueryFails(
-                "SELECT (SELECT count(*) FROM (VALUES (7,1)) t(orderkey, value) WHERE orderkey = corr_key LIMIT 1) FROM (values 7) t(corr_key)",
-                UNSUPPORTED_CORRELATED_SUBQUERY_ERROR_MSG);
-
-        assertQuery(
-                "SELECT (SELECT count(*) FROM (VALUES (7,1)) t(orderkey, val) \n" +
-                        "WHERE orderkey = corr_key GROUP BY val LIMIT 2) \n" +
-                        "FROM (VALUES 7) t(corr_key)\n");
-
-        // Limit(1) and non-constant output symbol of the subquery (count)
-        assertQueryFails("SELECT (SELECT count(*) FROM (VALUES (7,1), (7,2)) t(orderkey, value) WHERE orderkey = corr_key GROUP BY value LIMIT 1) FROM (values 7) t(corr_key)",
-                UNSUPPORTED_CORRELATED_SUBQUERY_ERROR_MSG);
-    }
-
-    @Test
-    public void testUnionWithProjectionPushDown()
-    {
-        assertQuery("SELECT order_key + 5, status FROM (SELECT orderkey order_key, orderstatus status FROM orders UNION ALL SELECT orderkey order_key, linestatus status FROM lineitem)");
-    }
-
     @Override
     public void testShowColumns()
     {
@@ -247,5 +197,4 @@ public class TestArrowFlightSmoke
                 .build();
         assertEqualsIgnoreOrder(actual, expected);
     }
-
 }

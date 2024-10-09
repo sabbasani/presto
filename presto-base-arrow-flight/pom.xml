@@ -247,13 +247,6 @@
             <scope>test</scope>
         </dependency>
 
-        <dependency>
-            <groupId>com.h2database</groupId>
-            <artifactId>h2</artifactId>
-            <version>2.2.220</version> <!-- Ensure this version is correct and compatible with your setup -->
-            <scope>test</scope>
-        </dependency>
-
     </dependencies>
 
     <dependencyManagement>

@@ -159,17 +159,19 @@ public class TestingArrowServer
 
             List<Field> fields = new ArrayList<>();
             if (schemaName != null && tableName != null) {
-                String query = "SELECT COLUMN_NAME, DATA_TYPE, CHARACTER_MAXIMUM_LENGTH FROM INFORMATION_SCHEMA.COLUMNS " +
+                String query = "SELECT * FROM INFORMATION_SCHEMA.COLUMNS " +
                         "WHERE TABLE_SCHEMA='" + schemaName.toUpperCase() + "' " +
                         "AND TABLE_NAME='" + tableName.toUpperCase() + "'";
 
                 try (ResultSet rs = connection.createStatement().executeQuery(query)) {
                     while (rs.next()) {
                         String columnName = rs.getString("COLUMN_NAME");
-                        String dataType = rs.getString("DATA_TYPE");
+                        String dataType = rs.getString("TYPE_NAME");
                         String charMaxLength = rs.getString("CHARACTER_MAXIMUM_LENGTH");
+                        int precision = rs.getInt("NUMERIC_PRECISION");
+                        int scale = rs.getInt("NUMERIC_SCALE");
 
-                        ArrowType arrowType = convertSqlTypeToArrowType(dataType);
+                        ArrowType arrowType = convertSqlTypeToArrowType(dataType, precision, scale);
                         Map<String, String> metaDataMap = new HashMap<>();
                         metaDataMap.put("columnNativeType", dataType);
                         if (charMaxLength != null) {
@@ -191,8 +193,10 @@ public class TestingArrowServer
                     for (int i = 1; i <= columnCount; i++) {
                         String columnName = metaData.getColumnName(i);
                         String columnType = metaData.getColumnTypeName(i);
+                        int precision = metaData.getPrecision(i);
+                        int scale = metaData.getScale(i);
 
-                        ArrowType arrowType = convertSqlTypeToArrowType(columnType);
+                        ArrowType arrowType = convertSqlTypeToArrowType(columnType, precision, scale);
                         Field field = new Field(columnName, FieldType.nullable(arrowType), null);
                         fields.add(field);
                     }
@@ -254,13 +258,14 @@ public class TestingArrowServer
     {
     }
 
-    private ArrowType convertSqlTypeToArrowType(String sqlType)
+    private ArrowType convertSqlTypeToArrowType(String sqlType, int precision, int scale)
     {
         switch (sqlType.toUpperCase()) {
             case "VARCHAR":
             case "CHAR":
             case "CHARACTER VARYING":
             case "CHARACTER":
+            case "CLOB":
                 return new ArrowType.Utf8();
             case "INTEGER":
             case "INT":
@@ -287,7 +292,7 @@ public class TestingArrowServer
                 return new ArrowType.Time(TimeUnit.MILLISECOND, 32);
             case "DECIMAL":
             case "NUMERIC":
-                return new ArrowType.Decimal(5, 2);
+                return new ArrowType.Decimal(precision, scale);
             case "BINARY":
             case "VARBINARY":
                 return new ArrowType.Binary();
