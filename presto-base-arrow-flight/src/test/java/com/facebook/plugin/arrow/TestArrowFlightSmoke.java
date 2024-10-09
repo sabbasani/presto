@@ -29,8 +29,11 @@ import org.testng.annotations.Test;
 import java.io.File;
 
 import static com.facebook.presto.SystemSessionProperties.LEGACY_UNNEST;
+import static com.facebook.presto.common.type.BigintType.BIGINT;
+import static com.facebook.presto.common.type.BooleanType.BOOLEAN;
 import static com.facebook.presto.common.type.VarcharType.VARCHAR;
 import static com.facebook.presto.testing.MaterializedResult.resultBuilder;
+import static com.facebook.presto.tests.QueryAssertions.assertEqualsIgnoreOrder;
 import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertTrue;
 
@@ -210,6 +213,39 @@ public class TestArrowFlightSmoke
                 .build();
 
         Assert.assertEquals(actual, expectedParametrizedVarchar);
+    }
+
+    @Test
+    public void testDescribeOutput()
+    {
+        Session session = Session.builder(getSession())
+                .addPreparedStatement("my_query", "SELECT * FROM nation")
+                .build();
+
+        MaterializedResult actual = computeActual(session, "DESCRIBE OUTPUT my_query");
+        MaterializedResult expected = resultBuilder(session, VARCHAR, VARCHAR, VARCHAR, VARCHAR, VARCHAR, BIGINT, BOOLEAN)
+                .row("nationkey", session.getCatalog().get(), session.getSchema().get(), "nation", "bigint", 8, false)
+                .row("name", session.getCatalog().get(), session.getSchema().get(), "nation", "varchar", 0, false)
+                .row("regionkey", session.getCatalog().get(), session.getSchema().get(), "nation", "bigint", 8, false)
+                .row("comment", session.getCatalog().get(), session.getSchema().get(), "nation", "varchar", 0, false)
+                .build();
+        assertEqualsIgnoreOrder(actual, expected);
+    }
+
+    @Test
+    public void testDescribeOutputNamedAndUnnamed()
+    {
+        Session session = Session.builder(getSession())
+                .addPreparedStatement("my_query", "SELECT 1, name, regionkey AS my_alias FROM nation")
+                .build();
+
+        MaterializedResult actual = computeActual(session, "DESCRIBE OUTPUT my_query");
+        MaterializedResult expected = resultBuilder(session, VARCHAR, VARCHAR, VARCHAR, VARCHAR, VARCHAR, BIGINT, BOOLEAN)
+                .row("_col0", "", "", "", "integer", 4, false)
+                .row("name", session.getCatalog().get(), session.getSchema().get(), "nation", "varchar", 0, false)
+                .row("my_alias", session.getCatalog().get(), session.getSchema().get(), "nation", "bigint", 8, true)
+                .build();
+        assertEqualsIgnoreOrder(actual, expected);
     }
 
 }
