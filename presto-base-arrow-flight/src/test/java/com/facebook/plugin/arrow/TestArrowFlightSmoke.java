@@ -159,7 +159,7 @@ public class TestArrowFlightSmoke
                 .row("orderpriority", "char(15)", "", "")
                 .row("clerk", "char(15)", "", "")
                 .row("shippriority", "integer", "", "")
-                .row("comment", "varchar", "", "")
+                .row("comment", "varchar(79)", "", "")
                 .build();
 
         Assert.assertEquals(actual, expectedParametrizedVarchar);
@@ -175,9 +175,9 @@ public class TestArrowFlightSmoke
         MaterializedResult actual = computeActual(session, "DESCRIBE OUTPUT my_query");
         MaterializedResult expected = resultBuilder(session, VARCHAR, VARCHAR, VARCHAR, VARCHAR, VARCHAR, BIGINT, BOOLEAN)
                 .row("nationkey", session.getCatalog().get(), session.getSchema().get(), "nation", "bigint", 8, false)
-                .row("name", session.getCatalog().get(), session.getSchema().get(), "nation", "varchar", 0, false)
+                .row("name", session.getCatalog().get(), session.getSchema().get(), "nation", "varchar(25)", 0, false)
                 .row("regionkey", session.getCatalog().get(), session.getSchema().get(), "nation", "bigint", 8, false)
-                .row("comment", session.getCatalog().get(), session.getSchema().get(), "nation", "varchar", 0, false)
+                .row("comment", session.getCatalog().get(), session.getSchema().get(), "nation", "varchar(114)", 0, false)
                 .build();
         assertEqualsIgnoreOrder(actual, expected);
     }
@@ -192,7 +192,7 @@ public class TestArrowFlightSmoke
         MaterializedResult actual = computeActual(session, "DESCRIBE OUTPUT my_query");
         MaterializedResult expected = resultBuilder(session, VARCHAR, VARCHAR, VARCHAR, VARCHAR, VARCHAR, BIGINT, BOOLEAN)
                 .row("_col0", "", "", "", "integer", 4, false)
-                .row("name", session.getCatalog().get(), session.getSchema().get(), "nation", "varchar", 0, false)
+                .row("name", session.getCatalog().get(), session.getSchema().get(), "nation", "varchar(25)", 0, false)
                 .row("my_alias", session.getCatalog().get(), session.getSchema().get(), "nation", "bigint", 8, true)
                 .build();
         assertEqualsIgnoreOrder(actual, expected);
