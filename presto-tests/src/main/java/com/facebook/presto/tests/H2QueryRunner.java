@@ -44,6 +44,7 @@ import org.jdbi.v3.core.statement.ParsedSql;
 import org.jdbi.v3.core.statement.PreparedBatch;
 import org.jdbi.v3.core.statement.SqlParser;
 import org.jdbi.v3.core.statement.StatementContext;
+import org.jetbrains.annotations.Nullable;
 import org.joda.time.DateTimeZone;
 
 import java.math.BigDecimal;
@@ -373,16 +374,17 @@ public class H2QueryRunner
     private static Object[] mapArrayValues(ArrayType arrayType, Object[] values)
     {
         Type elementType = arrayType.getElementType();
-        if (elementType instanceof ArrayType) {
-            return Arrays.stream(values)
-                    .map(v -> v == null ? null : newArrayList((Object[]) v))
-                    .toArray();
+        Object[] mappedValues = new Object[values.length];
+
+        Object[] objectArray = getObjectArray(values, elementType, mappedValues);
+        if (objectArray != null) {
+            return objectArray;
         }
 
         if (elementType instanceof RowType) {
             RowType rowType = (RowType) elementType;
             return Arrays.stream(values)
-                    .map(v -> v == null ? null : newArrayList(mapRowValues(rowType, (Object[]) v)))
+                    .map(v -> mapRowOrResultSet(v, rowType))
                     .toArray();
         }
 
@@ -407,20 +409,102 @@ public class H2QueryRunner
         return values;
     }
 
-    private static Object[] mapRowValues(RowType rowType, Object[] values)
+    private static List<Object> handleResultSet(ResultSet v, RowType rowType)
+            throws SQLException
     {
+        List<Object> result = new ArrayList<>();
+        int fieldCount = rowType.getFields().size();
+
+        while (v.next()) {
+            for (int i = 0; i < fieldCount; i++) {
+                result.add(v.getObject(i + 1)); // ResultSet uses 1-based indexing
+            }
+        }
+        return result;
+    }
+
+    @Nullable
+    private static Object[] getObjectArray(Object[] values, Type elementType, Object[] mappedValues)
+    {
+        if (elementType instanceof ArrayType) {
+            for (int i = 0; i < values.length; i++) {
+                Object value = values[i];
+
+                // Handle null values
+                if (value == null) {
+                    mappedValues[i] = null;
+                    continue;
+                }
+
+                // Handle JdbcArray for nested array types
+                if (value instanceof Array) {
+                    try {
+                        // Retrieve the array's elements
+                        Object[] arrayElements = (Object[]) ((Array) value).getArray();
+                        mappedValues[i] = newArrayList(arrayElements);
+                    }
+                    catch (SQLException e) {
+                        // Handle potential SQL exceptions when getting array data
+                        throw new RuntimeException("Error retrieving array elements", e);
+                    }
+                }
+                else if (value instanceof Object[]) {
+                    // If it's a direct Object array, map its values
+                    mappedValues[i] = newArrayList((Object[]) value);
+                }
+                else {
+                    // Handle other types if needed
+                    mappedValues[i] = value; // Fallback to the original value
+                }
+            }
+            return mappedValues;
+        }
+        return null;
+    }
+
+    private static Object[] mapRowValues(RowType rowType, Object[] values) {
         int fieldCount = rowType.getFields().size();
         Object[] fields = new Object[fieldCount];
+
         for (int j = 0; j < fieldCount; j++) {
             Type fieldType = rowType.getTypeParameters().get(j);
             if (fieldType instanceof RowType) {
-                fields[j] = newArrayList(mapRowValues((RowType) fieldType, (Object[]) values[j]));
-            }
-            else {
+                // Recursively map RowType values
+                fields[j] = Arrays.asList(mapRowValues((RowType) fieldType, (Object[]) values[j]));
+            } else if (values[j] != null && values[j].getClass().isArray()) {
+                // Convert arrays to lists for proper comparison
+                fields[j] = Arrays.asList((Object[]) values[j]);
+            } else {
+                // Assign value directly if not a nested row or array
                 fields[j] = values[j];
             }
         }
         return fields;
+    }
+
+    private static Object mapRowOrResultSet(Object value, RowType rowType) {
+        if (value == null) {
+            return null;
+        }
+
+        // Check if value is an array before casting
+        if (value instanceof Object[]) {
+            return newArrayList(mapRowValues(rowType, (Object[]) value));
+        }
+
+        // Handle other types of data (like JDBC result sets)
+        if (value instanceof ResultSet) {
+            try {
+                return handleResultSet((ResultSet) value, rowType);
+            } catch (SQLException e) {
+                // Handle SQL exceptions properly
+                e.printStackTrace();
+                return null;
+            }
+        }
+
+        // If value is of some unexpected type, handle gracefully
+        throw new IllegalArgumentException("Unsupported type: " + value.getClass().getName());
     }
 
     private static void insertRows(ConnectorTableMetadata tableMetadata, Handle handle, RecordSet data)
