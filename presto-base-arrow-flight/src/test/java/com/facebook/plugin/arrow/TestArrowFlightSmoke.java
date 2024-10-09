@@ -28,7 +28,6 @@ import org.testng.annotations.Test;
 
 import java.io.File;
 
-import static com.facebook.presto.SystemSessionProperties.LEGACY_UNNEST;
 import static com.facebook.presto.common.type.BigintType.BIGINT;
 import static com.facebook.presto.common.type.BooleanType.BOOLEAN;
 import static com.facebook.presto.common.type.VarcharType.VARCHAR;
@@ -198,5 +197,4 @@ public class TestArrowFlightSmoke
                 .build();
         assertEqualsIgnoreOrder(actual, expected);
     }
-
 }
