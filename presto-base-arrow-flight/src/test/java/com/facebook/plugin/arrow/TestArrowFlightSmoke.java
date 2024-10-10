@@ -14,7 +14,6 @@
 package com.facebook.plugin.arrow;
 
 import com.facebook.airlift.log.Logger;
-import com.facebook.presto.Session;
 import com.facebook.presto.testing.MaterializedResult;
 import com.facebook.presto.testing.QueryRunner;
 import com.facebook.presto.tests.AbstractTestQueries;
@@ -27,10 +26,6 @@ import org.testng.annotations.Test;
 
 import java.io.File;
 
-import static com.facebook.presto.SystemSessionProperties.ITERATIVE_OPTIMIZER_TIMEOUT;
-import static java.lang.String.format;
-import static java.util.stream.Collectors.joining;
-import static java.util.stream.IntStream.range;
 import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertTrue;
 
@@ -127,33 +122,5 @@ public class TestArrowFlightSmoke
     {
         String query = "SELECT t1.id, t1.name, t1.birthdate, t1.salary, t1.active, t2.description, t2.quantity, t2.price FROM example_table1 t1 JOIN example_table2 t2 ON t1.id = t2.id";
         assertEquals(getQueryRunner().execute(query).getRowCount(), 2);
-    }
-
-    @Test
-    public void testLargeIn()
-    {
-        String longValues = range(0, 5000)
-                .mapToObj(Integer::toString)
-                .collect(joining(", "));
-        Session session = Session.builder(getSession())
-                .setSystemProperty(ITERATIVE_OPTIMIZER_TIMEOUT, "15000ms")
-                .build();
-        assertQuery(session, "SELECT orderkey FROM orders WHERE orderkey IN (" + longValues + ")");
-        assertQuery(session, "SELECT orderkey FROM orders WHERE orderkey NOT IN (" + longValues + ")");
-
-        assertQuery(session, "SELECT orderkey FROM orders WHERE orderkey IN (mod(1000, orderkey), " + longValues + ")");
-        assertQuery(session, "SELECT orderkey FROM orders WHERE orderkey NOT IN (mod(1000, orderkey), " + longValues + ")");
-
-        String varcharValues = range(0, 5000)
-                .mapToObj(i -> "'" + i + "'")
-                .collect(joining(", "));
-        assertQuery(session, "SELECT orderkey FROM orders WHERE cast(orderkey AS VARCHAR) IN (" + varcharValues + ")");
-        assertQuery(session, "SELECT orderkey FROM orders WHERE cast(orderkey AS VARCHAR) NOT IN (" + varcharValues + ")");
-
-        String arrayValues = range(0, 5000)
-                .mapToObj(i -> format("ARRAY[%s, %s, %s]", i, i + 1, i + 2))
-                .collect(joining(", "));
-        assertQuery(session, "SELECT ARRAY[0, 0, 0] in (ARRAY[0, 0, 0], " + arrayValues + ")", "values true");
-        assertQuery(session, "SELECT ARRAY[0, 0, 0] in (" + arrayValues + ")", "values false");
     }
 }
