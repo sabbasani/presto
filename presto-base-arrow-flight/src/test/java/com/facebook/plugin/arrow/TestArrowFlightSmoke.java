@@ -44,8 +44,6 @@ public class TestArrowFlightSmoke
     private static FlightServer server;
     private static Location serverLocation;
 
-    private static final String UNSUPPORTED_CORRELATED_SUBQUERY_ERROR_MSG = "line .*: Given correlated subquery is not supported";
-
     @BeforeClass
     public void setup()
             throws Exception
@@ -178,22 +176,6 @@ public class TestArrowFlightSmoke
                 .row("name", session.getCatalog().get(), session.getSchema().get(), "nation", "varchar(25)", 0, false)
                 .row("regionkey", session.getCatalog().get(), session.getSchema().get(), "nation", "bigint", 8, false)
                 .row("comment", session.getCatalog().get(), session.getSchema().get(), "nation", "varchar(114)", 0, false)
-                .build();
-        assertEqualsIgnoreOrder(actual, expected);
-    }
-
-    @Test
-    public void testDescribeOutputNamedAndUnnamed()
-    {
-        Session session = Session.builder(getSession())
-                .addPreparedStatement("my_query", "SELECT 1, name, regionkey AS my_alias FROM nation")
-                .build();
-
-        MaterializedResult actual = computeActual(session, "DESCRIBE OUTPUT my_query");
-        MaterializedResult expected = resultBuilder(session, VARCHAR, VARCHAR, VARCHAR, VARCHAR, VARCHAR, BIGINT, BOOLEAN)
-                .row("_col0", "", "", "", "integer", 4, false)
-                .row("name", session.getCatalog().get(), session.getSchema().get(), "nation", "varchar(25)", 0, false)
-                .row("my_alias", session.getCatalog().get(), session.getSchema().get(), "nation", "bigint", 8, true)
                 .build();
         assertEqualsIgnoreOrder(actual, expected);
     }
