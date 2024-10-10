@@ -13,6 +13,7 @@
 
     <properties>
         <air.main.basedir>${project.parent.basedir}</air.main.basedir>
+        <grpc.version>1.63.0</grpc.version>
         <dep.okhttp.version>4.10.0</dep.okhttp.version>
         <arrow.version>17.0.0</arrow.version>
         <netty.version>4.1.110.Final</netty.version>
@@ -278,6 +279,37 @@
                 <groupId>com.google.protobuf</groupId>
                 <artifactId>protobuf-java</artifactId>
                 <version>3.25.1</version> <!-- Use the version that resolves conflicts -->
+            </dependency>
+
+            <dependency>
+                <groupId>io.grpc</groupId>
+                <artifactId>grpc-protobuf</artifactId>
+                <version>1.63.0</version>
+            </dependency>
+
+            <!-- Resolve gRPC Stub conflict -->
+            <dependency>
+                <groupId>io.grpc</groupId>
+                <artifactId>grpc-stub</artifactId>
+                <version>1.63.0</version>
+            </dependency>
+
+            <dependency>
+                <groupId>io.grpc</groupId>
+                <artifactId>grpc-core</artifactId>
+                <version>1.63.0</version> <!-- Same here -->
+            </dependency>
+
+            <dependency>
+                <groupId>io.grpc</groupId>
+                <artifactId>grpc-api</artifactId>
+                <version>1.63.0</version>
+            </dependency>
+
+            <dependency>
+                <groupId>io.grpc</groupId>
+                <artifactId>grpc-context</artifactId>
+                <version>1.63.0</version>
             </dependency>
 
             <dependency>
