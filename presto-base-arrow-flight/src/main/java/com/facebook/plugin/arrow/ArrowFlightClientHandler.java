@@ -57,8 +57,6 @@ public abstract class ArrowFlightClientHandler
                 }
             }
 
-            logger.info("location %s", location.getUri().toString());
-
             FlightClient.Builder flightClientBuilder = FlightClient.builder(allocator, location);
             if (config.getVerifyServer() != null && !config.getVerifyServer()) {
                 flightClientBuilder.verifyServer(false);
