@@ -58,13 +58,7 @@ public class TestingArrowQueryRunner
                     .put("arrow-flight.server", "127.0.0.1")
                     .put("arrow-flight.server-ssl-enabled", "true")
                     .put("arrow-flight.server.port", "9443")
-                    .put("arrow-flight.server.verify", "false")
-                    .put("data-source.port", "8443")
-                    .put("data-source.host", "9.30.120.2")
-                    .put("data-source.database", "db")
-                    .put("data-source.username", "user")
-                    .put("data-source.password", "password")
-                    .put("data-source.ssl", "true");
+                    .put("arrow-flight.server.verify", "false");
 
             queryRunner.createCatalog(connectorName, connectorName, properties.build());
 
