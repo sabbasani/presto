@@ -97,11 +97,11 @@ public class TestingH2DatabaseSetup
         stmt.execute("CREATE TABLE testdb.orders (\n" +
                 "  orderkey BIGINT PRIMARY KEY,\n" +
                 "  custkey BIGINT NOT NULL,\n" +
-                "  orderstatus CHAR(1) NOT NULL,\n" +
+                "  orderstatus VARCHAR(1) NOT NULL,\n" +
                 "  totalprice DOUBLE NOT NULL,\n" +
                 "  orderdate DATE NOT NULL,\n" +
-                "  orderpriority CHAR(15) NOT NULL,\n" +
-                "  clerk CHAR(15) NOT NULL,\n" +
+                "  orderpriority VARCHAR(15) NOT NULL,\n" +
+                "  clerk VARCHAR(15) NOT NULL,\n" +
                 "  shippriority INTEGER NOT NULL,\n" +
                 "  comment VARCHAR(79) NOT NULL\n" +
                 ")");
@@ -143,7 +143,7 @@ public class TestingH2DatabaseSetup
                 "  nationkey BIGINT PRIMARY KEY,\n" +
                 "  name VARCHAR(25) NOT NULL,\n" +
                 "  regionkey BIGINT NOT NULL,\n" +
-                "  comment VARCHAR(114) NOT NULL\n" +
+                "  comment VARCHAR(152) NOT NULL\n" +
                 ")");
         insertRows(tpchMetadata, NATION, handle);
 
