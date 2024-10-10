@@ -54,7 +54,6 @@ public abstract class AbstractArrowSplitManager
                         info.getTicket().getBytes(),
                         info.getLocations().stream().map(location -> location.getUri().toString()).collect(Collectors.toList())))
                 .collect(Collectors.collectingAndThen(Collectors.toList(), Collections::unmodifiableList));
-        logger.info("created %d splits from arrow tickets", splits.size());
         return new FixedSplitSource(splits);
     }
 
