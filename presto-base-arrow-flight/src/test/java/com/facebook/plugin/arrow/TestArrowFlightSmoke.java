@@ -14,10 +14,7 @@
 package com.facebook.plugin.arrow;
 
 import com.facebook.airlift.log.Logger;
-import com.facebook.presto.Session;
-import com.facebook.presto.testing.MaterializedResult;
 import com.facebook.presto.testing.QueryRunner;
-import com.facebook.presto.testing.assertions.Assert;
 import com.facebook.presto.tests.AbstractTestQueries;
 import org.apache.arrow.flight.FlightServer;
 import org.apache.arrow.flight.Location;
@@ -28,11 +25,6 @@ import org.testng.annotations.Test;
 
 import java.io.File;
 
-import static com.facebook.presto.common.type.BigintType.BIGINT;
-import static com.facebook.presto.common.type.BooleanType.BOOLEAN;
-import static com.facebook.presto.common.type.VarcharType.VARCHAR;
-import static com.facebook.presto.testing.MaterializedResult.resultBuilder;
-import static com.facebook.presto.tests.QueryAssertions.assertEqualsIgnoreOrder;
 import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertTrue;
 
@@ -43,8 +35,6 @@ public class TestArrowFlightSmoke
     private static RootAllocator allocator;
     private static FlightServer server;
     private static Location serverLocation;
-
-    private static final String UNSUPPORTED_CORRELATED_SUBQUERY_ERROR_MSG = "line .*: Given correlated subquery is not supported";
 
     @BeforeClass
     public void setup()
@@ -143,58 +133,5 @@ public class TestArrowFlightSmoke
     {
         String query = "SELECT t1.id, t1.name, t1.birthdate, t1.salary, t1.active, t2.description, t2.quantity, t2.price FROM example_table1 t1 JOIN example_table2 t2 ON t1.id = t2.id";
         assertEquals(getQueryRunner().execute(query).getRowCount(), 2);
-    }
-
-    @Override
-    public void testShowColumns()
-    {
-        MaterializedResult actual = computeActual("SHOW COLUMNS FROM orders");
-
-        MaterializedResult expectedParametrizedVarchar = resultBuilder(getSession(), VARCHAR, VARCHAR, VARCHAR, VARCHAR)
-                .row("orderkey", "bigint", "", "")
-                .row("custkey", "bigint", "", "")
-                .row("orderstatus", "char(1)", "", "")
-                .row("totalprice", "double", "", "")
-                .row("orderdate", "date", "", "")
-                .row("orderpriority", "char(15)", "", "")
-                .row("clerk", "char(15)", "", "")
-                .row("shippriority", "integer", "", "")
-                .row("comment", "varchar(79)", "", "")
-                .build();
-
-        Assert.assertEquals(actual, expectedParametrizedVarchar);
-    }
-
-    @Test
-    public void testDescribeOutput()
-    {
-        Session session = Session.builder(getSession())
-                .addPreparedStatement("my_query", "SELECT * FROM nation")
-                .build();
-
-        MaterializedResult actual = computeActual(session, "DESCRIBE OUTPUT my_query");
-        MaterializedResult expected = resultBuilder(session, VARCHAR, VARCHAR, VARCHAR, VARCHAR, VARCHAR, BIGINT, BOOLEAN)
-                .row("nationkey", session.getCatalog().get(), session.getSchema().get(), "nation", "bigint", 8, false)
-                .row("name", session.getCatalog().get(), session.getSchema().get(), "nation", "varchar(25)", 0, false)
-                .row("regionkey", session.getCatalog().get(), session.getSchema().get(), "nation", "bigint", 8, false)
-                .row("comment", session.getCatalog().get(), session.getSchema().get(), "nation", "varchar(114)", 0, false)
-                .build();
-        assertEqualsIgnoreOrder(actual, expected);
-    }
-
-    @Test
-    public void testDescribeOutputNamedAndUnnamed()
-    {
-        Session session = Session.builder(getSession())
-                .addPreparedStatement("my_query", "SELECT 1, name, regionkey AS my_alias FROM nation")
-                .build();
-
-        MaterializedResult actual = computeActual(session, "DESCRIBE OUTPUT my_query");
-        MaterializedResult expected = resultBuilder(session, VARCHAR, VARCHAR, VARCHAR, VARCHAR, VARCHAR, BIGINT, BOOLEAN)
-                .row("_col0", "", "", "", "integer", 4, false)
-                .row("name", session.getCatalog().get(), session.getSchema().get(), "nation", "varchar(25)", 0, false)
-                .row("my_alias", session.getCatalog().get(), session.getSchema().get(), "nation", "bigint", 8, true)
-                .build();
-        assertEqualsIgnoreOrder(actual, expected);
     }
 }
