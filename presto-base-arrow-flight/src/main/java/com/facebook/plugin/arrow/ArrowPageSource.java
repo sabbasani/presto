@@ -48,6 +48,7 @@ import org.apache.arrow.vector.TimeMicroVector;
 import org.apache.arrow.vector.TimeMilliVector;
 import org.apache.arrow.vector.TimeSecVector;
 import org.apache.arrow.vector.TimeStampMicroVector;
+import org.apache.arrow.vector.TimeStampMilliTZVector;
 import org.apache.arrow.vector.TimeStampMilliVector;
 import org.apache.arrow.vector.TimeStampSecVector;
 import org.apache.arrow.vector.TinyIntVector;
@@ -256,7 +257,30 @@ public class ArrowPageSource
         else if (vector instanceof TimeMicroVector) {
             return buildBlockFromTimeMicroVector((TimeMicroVector) vector, type);
         }
+        else if (vector instanceof TimeStampMilliTZVector) {
+            return buildBlockFromTimeMilliTZVector((TimeStampMilliTZVector) vector, type);
+        }
         throw new UnsupportedOperationException("Unsupported vector type: " + vector.getClass().getSimpleName());
+    }
+
+    private Block buildBlockFromTimeMilliTZVector(TimeStampMilliTZVector vector, Type type)
+    {
+        // Ensure the type is a timestamp type (not TimeType, but something like TimestampType)
+        if (!(type instanceof TimestampType)) {
+            throw new IllegalArgumentException("Type must be a TimestampType for TimeStampMilliTZVector");
+        }
+
+        BlockBuilder builder = type.createBlockBuilder(null, vector.getValueCount());
+        for (int i = 0; i < vector.getValueCount(); i++) {
+            if (vector.isNull(i)) {
+                builder.appendNull();
+            }
+            else {
+                long millis = vector.get(i);
+                type.writeLong(builder, millis);
+            }
+        }
+        return builder.build();
     }
 
     private Block buildBlockFromBitVector(BitVector vector, Type type)

@@ -275,7 +275,7 @@
             <dependency>
                 <groupId>com.google.protobuf</groupId>
                 <artifactId>protobuf-java</artifactId>
-                <version>3.25.1</version> <!-- Use the version that resolves conflicts -->
+                <version>3.25.5</version> <!-- Use the version that resolves conflicts -->
             </dependency>
 
             <dependency>
