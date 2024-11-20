@@ -15,15 +15,26 @@ package com.facebook.plugin.arrow;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 
-public class TestingInteractionProperties
+public final class TestingInteractionProperties
 {
     @JsonProperty("select_statement")
-    private String selectStatement;
+    private final String selectStatement;
 
     @JsonProperty("schema_name")
-    private String schema;
+    private final String schema;
+
     @JsonProperty("table_name")
-    private String table;
+    private final String table;
+
+    // Constructor to initialize the fields
+    public TestingInteractionProperties(String selectStatement, String schema, String table)
+    {
+        this.selectStatement = selectStatement;
+        this.schema = schema;
+        this.table = table;
+    }
+
+    // Getters (no setters as the fields are final and immutable)
     public String getSelectStatement()
     {
         return selectStatement;
@@ -39,18 +50,5 @@ public class TestingInteractionProperties
         return table;
     }
 
-    public void setSchema(String schema)
-    {
-        this.schema = schema;
-    }
-
-    public void setSelectStatement(String selectStatement)
-    {
-        this.selectStatement = selectStatement;
-    }
-
-    public void setTable(String table)
-    {
-        this.table = table;
-    }
+    // No setters as the class is immutable
 }

@@ -13,12 +13,21 @@
  */
 package com.facebook.plugin.arrow;
 
-public class TestingConnectionProperties
+public final class TestingConnectionProperties
 {
-    public String database;
-    public String password;
+    public final String database;
+    public final String password;
     public Integer port;
-    public String host;
-    public Boolean ssl;
-    public String username;
+    public final String host;
+    public final Boolean ssl;
+    public final String username;
+
+    public TestingConnectionProperties(String database, String password, String host, Boolean ssl, String username)
+    {
+        this.database = database;
+        this.password = password;
+        this.host = host;
+        this.ssl = ssl;
+        this.username = username;
+    }
 }

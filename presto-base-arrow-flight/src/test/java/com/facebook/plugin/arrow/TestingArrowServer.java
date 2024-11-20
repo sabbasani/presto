@@ -147,6 +147,7 @@ public class TestingArrowServer
     @Override
     public void listFlights(CallContext callContext, Criteria criteria, StreamListener<FlightInfo> streamListener)
     {
+        throw new UnsupportedOperationException("This operation is not supported");
     }
 
     @Override
@@ -222,7 +223,7 @@ public class TestingArrowServer
     @Override
     public Runnable acceptPut(CallContext callContext, FlightStream flightStream, StreamListener<PutResult> streamListener)
     {
-        return null;
+        throw new UnsupportedOperationException("This operation is not supported");
     }
 
     @Override
