@@ -88,25 +88,11 @@ public class TestingArrowFlightRequest
 
     private TestingConnectionProperties getConnectionProperties()
     {
-        TestingConnectionProperties properties = new TestingConnectionProperties();
-        properties.database = testconfig.getDataSourceDatabase();
-        properties.host = testconfig.getDataSourceHost();
-        properties.port = testconfig.getDataSourcePort();
-        properties.username = testconfig.getDataSourceUsername();
-        properties.password = testconfig.getDataSourcePassword();
-        return properties;
+        return new TestingConnectionProperties(testconfig.getDataSourceDatabase(), testconfig.getDataSourcePassword(), testconfig.getDataSourceHost(), testconfig.getDataSourceSSL(), testconfig.getDataSourceUsername());
     }
 
     private TestingInteractionProperties createInteractionProperties()
     {
-        TestingInteractionProperties interactionProperties = new TestingInteractionProperties();
-        if (getQuery().isPresent()) {
-            interactionProperties.setSelectStatement(getQuery().get());
-        }
-        else {
-            interactionProperties.setSchema(getSchema());
-            interactionProperties.setTable(getTable());
-        }
-        return interactionProperties;
+        return getQuery().isPresent() ? new TestingInteractionProperties(getQuery().get(), getSchema(), getTable()) : new TestingInteractionProperties(null, getSchema(), getTable());
     }
 }
