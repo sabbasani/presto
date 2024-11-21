@@ -21,7 +21,6 @@ import java.nio.charset.StandardCharsets;
 import java.util.Optional;
 
 public class TestingArrowFlightRequest
-        implements ArrowFlightRequest
 {
     private final String schema;
     private final String table;
@@ -74,7 +73,6 @@ public class TestingArrowFlightRequest
         return requestData;
     }
 
-    @Override
     public byte[] getCommand()
     {
         ObjectMapper objectMapper = new ObjectMapper();
