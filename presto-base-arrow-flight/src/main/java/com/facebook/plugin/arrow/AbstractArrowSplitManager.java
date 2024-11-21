@@ -20,6 +20,7 @@ import com.facebook.presto.spi.ConnectorTableLayoutHandle;
 import com.facebook.presto.spi.FixedSplitSource;
 import com.facebook.presto.spi.connector.ConnectorSplitManager;
 import com.facebook.presto.spi.connector.ConnectorTransactionHandle;
+import org.apache.arrow.flight.FlightDescriptor;
 import org.apache.arrow.flight.FlightInfo;
 
 import java.util.List;
@@ -37,17 +38,17 @@ public abstract class AbstractArrowSplitManager
         this.clientHandler = client;
     }
 
-    protected abstract ArrowFlightRequest getArrowFlightRequest(ArrowFlightConfig config, ArrowTableLayoutHandle tableLayoutHandle);
+    protected abstract FlightDescriptor getFlightDescriptor(ArrowFlightConfig config, ArrowTableLayoutHandle tableLayoutHandle);
 
     @Override
     public ConnectorSplitSource getSplits(ConnectorTransactionHandle transactionHandle, ConnectorSession session, ConnectorTableLayoutHandle layout, SplitSchedulingContext splitSchedulingContext)
     {
         ArrowTableLayoutHandle tableLayoutHandle = (ArrowTableLayoutHandle) layout;
         ArrowTableHandle tableHandle = tableLayoutHandle.getTableHandle();
-        ArrowFlightRequest request = getArrowFlightRequest(clientHandler.getConfig(),
+        FlightDescriptor flightDescriptor = getFlightDescriptor(clientHandler.getConfig(),
                 tableLayoutHandle);
 
-        FlightInfo flightInfo = clientHandler.getFlightInfo(request, session);
+        FlightInfo flightInfo = clientHandler.getFlightInfo(flightDescriptor, session);
         List<ArrowSplit> splits = flightInfo.getEndpoints()
                 .stream()
                 .map(info -> new ArrowSplit(

@@ -26,6 +26,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.common.collect.ImmutableList;
 import org.apache.arrow.flight.Action;
+import org.apache.arrow.flight.FlightDescriptor;
 import org.apache.arrow.flight.Result;
 import org.apache.arrow.vector.types.pojo.Field;
 
@@ -61,12 +62,6 @@ public class TestingArrowMetadata
     }
 
     @Override
-    protected ArrowFlightRequest getArrowFlightRequest(ArrowFlightConfig config, String schema)
-    {
-        return new TestingArrowFlightRequest(config, schema, nodeManager.getWorkerNodes().size(), testconfig);
-    }
-
-    @Override
     public List<String> listSchemaNames(ConnectorSession session)
     {
         List<String> listSchemas = extractSchemaAndTableData(Optional.empty(), session);
@@ -95,7 +90,7 @@ public class TestingArrowMetadata
     {
         try (ArrowFlightClient client = clientHandler.getClient(Optional.empty())) {
             List<String> names = new ArrayList<>();
-            ArrowFlightRequest request = getArrowFlightRequest(config, schema.orElse(null));
+            TestingArrowFlightRequest request = getArrowFlightRequest(config, schema.orElse(null));
             ObjectNode rootNode = (ObjectNode) objectMapper.readTree(request.getCommand());
 
             String modifiedQueryJson = objectMapper.writeValueAsString(rootNode);
@@ -150,8 +145,14 @@ public class TestingArrowMetadata
     }
 
     @Override
-    protected ArrowFlightRequest getArrowFlightRequest(ArrowFlightConfig config, Optional<String> query, String schema, String table)
+    protected FlightDescriptor getFlightDescriptor(ArrowFlightConfig config, Optional<String> query, String schema, String table)
     {
-        return new TestingArrowFlightRequest(config, testconfig, schema, table, query, nodeManager.getWorkerNodes().size());
+        TestingArrowFlightRequest request = new TestingArrowFlightRequest(config, testconfig, schema, table, query, nodeManager.getWorkerNodes().size());
+        return FlightDescriptor.command(request.getCommand());
+    }
+
+    private TestingArrowFlightRequest getArrowFlightRequest(ArrowFlightConfig config, String schema)
+    {
+        return new TestingArrowFlightRequest(config, schema, nodeManager.getWorkerNodes().size(), testconfig);
     }
 }

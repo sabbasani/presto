@@ -43,6 +43,7 @@ import com.facebook.presto.spi.SchemaTablePrefix;
 import com.facebook.presto.spi.connector.ConnectorMetadata;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
+import org.apache.arrow.flight.FlightDescriptor;
 import org.apache.arrow.flight.FlightInfo;
 import org.apache.arrow.vector.types.pojo.ArrowType;
 import org.apache.arrow.vector.types.pojo.Field;
@@ -130,9 +131,7 @@ public abstract class AbstractArrowMetadata
         }
     }
 
-    protected abstract ArrowFlightRequest getArrowFlightRequest(ArrowFlightConfig config, Optional<String> query, String schema, String table);
-
-    protected abstract ArrowFlightRequest getArrowFlightRequest(ArrowFlightConfig config, String schema);
+    protected abstract FlightDescriptor getFlightDescriptor(ArrowFlightConfig config, Optional<String> query, String schema, String table);
 
     protected abstract String getDataSourceSpecificSchemaName(ArrowFlightConfig config, String schemaName);
 
@@ -156,10 +155,10 @@ public abstract class AbstractArrowMetadata
         try {
             String dataSourceSpecificSchemaName = getDataSourceSpecificSchemaName(config, schema);
             String dataSourceSpecificTableName = getDataSourceSpecificTableName(config, table);
-            ArrowFlightRequest request = getArrowFlightRequest(clientHandler.getConfig(), Optional.empty(),
+            FlightDescriptor flightDescriptor = getFlightDescriptor(clientHandler.getConfig(), Optional.empty(),
                     dataSourceSpecificSchemaName, dataSourceSpecificTableName);
 
-            FlightInfo flightInfo = clientHandler.getFlightInfo(request, connectorSession);
+            FlightInfo flightInfo = clientHandler.getFlightInfo(flightDescriptor, connectorSession);
             List<Field> fields = flightInfo.getSchema().getFields();
             return fields;
         }
