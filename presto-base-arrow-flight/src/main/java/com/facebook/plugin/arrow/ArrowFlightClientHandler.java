@@ -76,17 +76,6 @@ public abstract class ArrowFlightClientHandler
 
     protected abstract CredentialCallOption getCallOptions(ConnectorSession connectorSession);
 
-    /**
-     * Connector implementations can override this method to get a FlightDescriptor
-     * from command or path.
-     * @param flightRequest
-     * @return
-     */
-    protected FlightDescriptor getFlightDescriptor(ArrowFlightRequest flightRequest)
-    {
-        return FlightDescriptor.command(flightRequest.getCommand());
-    }
-
     public ArrowFlightConfig getConfig()
     {
         return config;
@@ -97,13 +86,12 @@ public abstract class ArrowFlightClientHandler
         return initializeClient(uri);
     }
 
-    public FlightInfo getFlightInfo(ArrowFlightRequest request, ConnectorSession connectorSession)
+    public FlightInfo getFlightInfo(FlightDescriptor flightDescriptor, ConnectorSession connectorSession)
     {
         try (ArrowFlightClient client = getClient(Optional.empty())) {
             CredentialCallOption auth = this.getCallOptions(connectorSession);
-            FlightDescriptor descriptor = getFlightDescriptor(request);
             logger.debug("Fetching flight info");
-            FlightInfo flightInfo = client.getFlightClient().getInfo(descriptor, auth);
+            FlightInfo flightInfo = client.getFlightClient().getInfo(flightDescriptor, auth);
             logger.debug("got flight info");
             return flightInfo;
         }

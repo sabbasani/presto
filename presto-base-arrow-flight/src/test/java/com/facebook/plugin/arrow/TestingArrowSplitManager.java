@@ -15,6 +15,7 @@ package com.facebook.plugin.arrow;
 
 import com.facebook.presto.spi.NodeManager;
 import com.google.common.collect.ImmutableMap;
+import org.apache.arrow.flight.FlightDescriptor;
 
 import javax.inject.Inject;
 
@@ -36,13 +37,14 @@ public class TestingArrowSplitManager
     }
 
     @Override
-    protected ArrowFlightRequest getArrowFlightRequest(ArrowFlightConfig config, ArrowTableLayoutHandle tableLayoutHandle)
+    protected FlightDescriptor getFlightDescriptor(ArrowFlightConfig config, ArrowTableLayoutHandle tableLayoutHandle)
     {
         ArrowTableHandle tableHandle = tableLayoutHandle.getTableHandle();
         Optional<String> query = Optional.of(new TestingArrowQueryBuilder().buildSql(tableHandle.getSchema(),
                 tableHandle.getTable(),
                 tableLayoutHandle.getColumnHandles(), ImmutableMap.of(),
                 tableLayoutHandle.getTupleDomain()));
-        return new TestingArrowFlightRequest(config, testconfig, tableHandle.getSchema(), tableHandle.getTable(), query, nodeManager.getWorkerNodes().size());
+        TestingArrowFlightRequest request = new TestingArrowFlightRequest(config, testconfig, tableHandle.getSchema(), tableHandle.getTable(), query, nodeManager.getWorkerNodes().size());
+        return FlightDescriptor.command(request.getCommand());
     }
 }
