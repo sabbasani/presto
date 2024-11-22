@@ -29,9 +29,9 @@ public class TestingArrowSplitManager
     private final NodeManager nodeManager;
 
     @Inject
-    public TestingArrowSplitManager(ArrowFlightClientHandler client, TestingArrowFlightConfig testconfig, NodeManager nodeManager)
+    public TestingArrowSplitManager(ArrowFlightConfig config, ArrowFlightClientHandler client, TestingArrowFlightConfig testconfig, NodeManager nodeManager)
     {
-        super(client);
+        super(client, config);
         this.testconfig = testconfig;
         this.nodeManager = nodeManager;
     }

@@ -32,10 +32,12 @@ public abstract class AbstractArrowSplitManager
 {
     private static final Logger logger = Logger.get(AbstractArrowSplitManager.class);
     private final ArrowFlightClientHandler clientHandler;
+    private final ArrowFlightConfig config;
 
-    public AbstractArrowSplitManager(ArrowFlightClientHandler client)
+    public AbstractArrowSplitManager(ArrowFlightClientHandler client, ArrowFlightConfig config)
     {
         this.clientHandler = client;
+        this.config = config;
     }
 
     protected abstract FlightDescriptor getFlightDescriptor(ArrowFlightConfig config, ArrowTableLayoutHandle tableLayoutHandle);
@@ -45,8 +47,7 @@ public abstract class AbstractArrowSplitManager
     {
         ArrowTableLayoutHandle tableLayoutHandle = (ArrowTableLayoutHandle) layout;
         ArrowTableHandle tableHandle = tableLayoutHandle.getTableHandle();
-        FlightDescriptor flightDescriptor = getFlightDescriptor(clientHandler.getConfig(),
-                tableLayoutHandle);
+        FlightDescriptor flightDescriptor = getFlightDescriptor(config, tableLayoutHandle);
 
         FlightInfo flightInfo = clientHandler.getFlightInfo(flightDescriptor, session);
         List<ArrowSplit> splits = flightInfo.getEndpoints()
