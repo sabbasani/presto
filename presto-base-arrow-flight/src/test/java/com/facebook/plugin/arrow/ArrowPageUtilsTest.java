@@ -33,7 +33,6 @@ import org.apache.arrow.vector.TimeStampMicroVector;
 import org.apache.arrow.vector.TinyIntVector;
 import org.apache.arrow.vector.complex.ListVector;
 import org.apache.arrow.vector.complex.impl.UnionListWriter;
-import org.testng.Assert;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
 
@@ -201,11 +200,11 @@ public class ArrowPageUtilsTest
     }
 
     @Test
-    public void testBuildBlockFromListVector() {
+    public void testBuildBlockFromListVector()
+    {
         // Create a root allocator for Arrow vectors
         try (BufferAllocator allocator = new RootAllocator();
                 ListVector listVector = ListVector.empty("listVector", allocator)) {
-
             // Allocate the vector and get the writer
             listVector.allocateNew();
             UnionListWriter listWriter = listVector.getWriter();
@@ -232,9 +231,7 @@ public class ArrowPageUtilsTest
             Block block = ArrowPageUtils.buildBlockFromListVector(listVector, arrayType);
 
             // Validate the result
-            Assert.assertEquals(block.getPositionCount(), 4); // 4 lists in the block
-
+            assertEquals(block.getPositionCount(), 4); // 4 lists in the block
         }
     }
-
 }

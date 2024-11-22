@@ -24,12 +24,9 @@ import com.facebook.presto.common.type.DecimalType;
 import com.facebook.presto.common.type.Decimals;
 import com.facebook.presto.common.type.DoubleType;
 import com.facebook.presto.common.type.IntegerType;
-import com.facebook.presto.common.type.RealType;
 import com.facebook.presto.common.type.RowType;
-import com.facebook.presto.common.type.SmallintType;
 import com.facebook.presto.common.type.TimeType;
 import com.facebook.presto.common.type.TimestampType;
-import com.facebook.presto.common.type.TinyintType;
 import com.facebook.presto.common.type.Type;
 import com.facebook.presto.common.type.VarcharType;
 import com.google.common.base.CharMatcher;
@@ -72,6 +69,7 @@ public class ArrowPageUtils
     private ArrowPageUtils()
     {
     }
+
     static Block buildBlockFromVector(FieldVector vector, Type type)
     {
         if (vector instanceof BitVector) {
@@ -141,6 +139,9 @@ public class ArrowPageUtils
         }
         else if (vector instanceof TimeStampMilliTZVector) {
             return buildBlockFromTimeMilliTZVector((TimeStampMilliTZVector) vector, type);
+        }
+        else if (vector instanceof ListVector) {
+            return buildBlockFromListVector((ListVector) vector, type);
         }
         throw new UnsupportedOperationException("Unsupported vector type: " + vector.getClass().getSimpleName());
     }
@@ -533,7 +534,8 @@ public class ArrowPageUtils
         for (int i = 0; i < vector.getValueCount(); i++) {
             if (vector.isNull(i)) {
                 arrayBuilder.appendNull();
-            } else {
+            }
+            else {
                 BlockBuilder elementBuilder = arrayBuilder.beginBlockEntry();
                 UnionListReader reader = vector.getReader();
                 reader.setPosition(i);
@@ -542,7 +544,8 @@ public class ArrowPageUtils
                     Object value = reader.readObject();
                     if (value == null) {
                         elementBuilder.appendNull();
-                    } else {
+                    }
+                    else {
                         appendValueToBuilder(elementType, elementBuilder, value);
                     }
                 }
@@ -552,7 +555,8 @@ public class ArrowPageUtils
         return arrayBuilder.build();
     }
 
-    private static void appendValueToBuilder(Type type, BlockBuilder builder, Object value) {
+    private static void appendValueToBuilder(Type type, BlockBuilder builder, Object value)
+    {
         if (value == null) {
             builder.appendNull();
             return;
@@ -562,78 +566,98 @@ public class ArrowPageUtils
             // Convert value to string and write as Varchar
             Slice slice = Slices.utf8Slice(value.toString());
             type.writeSlice(builder, slice);
-        } else if (type instanceof BigintType) {
+        }
+        else if (type instanceof BigintType) {
             if (value instanceof Long) {
                 type.writeLong(builder, (Long) value);
-            } else if (value instanceof Integer) {
+            }
+            else if (value instanceof Integer) {
                 type.writeLong(builder, ((Integer) value).longValue());
-            } else if (value instanceof JsonStringArrayList) {
+            }
+            else if (value instanceof JsonStringArrayList) {
                 JsonStringArrayList list = (JsonStringArrayList) value;
                 for (Object obj : list) {
                     try {
                         long longValue = Long.parseLong(obj.toString());
                         type.writeLong(builder, longValue);
-                    } catch (NumberFormatException e) {
+                    }
+                    catch (NumberFormatException e) {
                         throw new IllegalArgumentException("Invalid number format in JsonStringArrayList: " + obj, e);
                     }
                 }
-            } else {
+            }
+            else {
                 throw new IllegalArgumentException("Unsupported type for BigintType: " + value.getClass());
             }
-        } else if (type instanceof IntegerType) {
+        }
+        else if (type instanceof IntegerType) {
             if (value instanceof Integer) {
                 type.writeLong(builder, (Integer) value);
-            } else if (value instanceof JsonStringArrayList) {
+            }
+            else if (value instanceof JsonStringArrayList) {
                 JsonStringArrayList list = (JsonStringArrayList) value;
                 for (Object obj : list) {
                     try {
                         int intValue = Integer.parseInt(obj.toString());
                         type.writeLong(builder, intValue);
-                    } catch (NumberFormatException e) {
+                    }
+                    catch (NumberFormatException e) {
                         throw new IllegalArgumentException("Invalid number format in JsonStringArrayList: " + obj, e);
                     }
                 }
-            } else {
+            }
+            else {
                 throw new IllegalArgumentException("Unsupported type for IntegerType: " + value.getClass());
             }
-        } else if (type instanceof DoubleType) {
+        }
+        else if (type instanceof DoubleType) {
             if (value instanceof Double) {
                 type.writeDouble(builder, (Double) value);
-            } else if (value instanceof Float) {
+            }
+            else if (value instanceof Float) {
                 type.writeDouble(builder, ((Float) value).doubleValue());
-            } else if (value instanceof JsonStringArrayList) {
+            }
+            else if (value instanceof JsonStringArrayList) {
                 JsonStringArrayList list = (JsonStringArrayList) value;
                 for (Object obj : list) {
                     try {
                         double doubleValue = Double.parseDouble(obj.toString());
                         type.writeDouble(builder, doubleValue);
-                    } catch (NumberFormatException e) {
+                    }
+                    catch (NumberFormatException e) {
                         throw new IllegalArgumentException("Invalid number format in JsonStringArrayList: " + obj, e);
                     }
                 }
-            } else {
+            }
+            else {
                 throw new IllegalArgumentException("Unsupported type for DoubleType: " + value.getClass());
             }
-        } else if (type instanceof BooleanType) {
+        }
+        else if (type instanceof BooleanType) {
             if (value instanceof Boolean) {
                 type.writeBoolean(builder, (Boolean) value);
-            } else {
+            }
+            else {
                 throw new IllegalArgumentException("Unsupported type for BooleanType: " + value.getClass());
             }
-        } else if (type instanceof DecimalType) {
+        }
+        else if (type instanceof DecimalType) {
             DecimalType decimalType = (DecimalType) type;
             if (value instanceof BigDecimal) {
                 BigDecimal decimalValue = (BigDecimal) value;
                 if (decimalType.isShort()) {
                     builder.writeLong(decimalValue.unscaledValue().longValue());
-                } else {
+                }
+                else {
                     Slice slice = Decimals.encodeScaledValue(decimalValue);
                     decimalType.writeSlice(builder, slice);
                 }
-            } else {
+            }
+            else {
                 throw new IllegalArgumentException("Unsupported type for DecimalType: " + value.getClass());
             }
-        } else if (type instanceof ArrayType) {
+        }
+        else if (type instanceof ArrayType) {
             // Handling array types (lists)
             ArrayType arrayType = (ArrayType) type;
             Type elementType = arrayType.getElementType();
@@ -642,7 +666,8 @@ public class ArrowPageUtils
                 appendValueToBuilder(elementType, arrayBuilder, element);
             }
             builder.closeEntry();
-        } else if (type instanceof RowType) {
+        }
+        else if (type instanceof RowType) {
             // Handling row types (structs)
             RowType rowType = (RowType) type;
             List<Object> rowValues = (List<Object>) value;
@@ -653,11 +678,9 @@ public class ArrowPageUtils
                 appendValueToBuilder(fieldType, rowBuilder, rowValues.get(i));
             }
             builder.closeEntry();
-        } else {
+        }
+        else {
             throw new IllegalArgumentException("Unsupported type: " + type);
         }
     }
-
-
-
 }
