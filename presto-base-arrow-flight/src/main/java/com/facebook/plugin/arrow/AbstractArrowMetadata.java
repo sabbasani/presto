@@ -155,7 +155,7 @@ public abstract class AbstractArrowMetadata
         try {
             String dataSourceSpecificSchemaName = getDataSourceSpecificSchemaName(config, schema);
             String dataSourceSpecificTableName = getDataSourceSpecificTableName(config, table);
-            FlightDescriptor flightDescriptor = getFlightDescriptor(clientHandler.getConfig(), Optional.empty(),
+            FlightDescriptor flightDescriptor = getFlightDescriptor(config, Optional.empty(),
                     dataSourceSpecificSchemaName, dataSourceSpecificTableName);
 
             FlightInfo flightInfo = clientHandler.getFlightInfo(flightDescriptor, connectorSession);
