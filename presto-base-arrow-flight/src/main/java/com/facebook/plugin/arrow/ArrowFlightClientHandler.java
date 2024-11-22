@@ -21,6 +21,7 @@ import org.apache.arrow.flight.FlightInfo;
 import org.apache.arrow.flight.Location;
 import org.apache.arrow.flight.grpc.CredentialCallOption;
 import org.apache.arrow.memory.RootAllocator;
+import org.apache.arrow.vector.types.pojo.Schema;
 
 import java.io.FileInputStream;
 import java.io.InputStream;
@@ -33,6 +34,8 @@ public abstract class ArrowFlightClientHandler
     private static final Logger logger = Logger.get(ArrowFlightClientHandler.class);
     private final ArrowFlightConfig config;
 
+    private RootAllocator allocator;
+
     public ArrowFlightClientHandler(ArrowFlightConfig config)
     {
         this.config = config;
@@ -41,7 +44,6 @@ public abstract class ArrowFlightClientHandler
     private ArrowFlightClient initializeClient(Optional<String> uri)
     {
         try {
-            RootAllocator allocator = new RootAllocator(Long.MAX_VALUE);
             Optional<InputStream> trustedCertificate = Optional.empty();
 
             Location location;
@@ -57,6 +59,10 @@ public abstract class ArrowFlightClientHandler
                 }
             }
 
+            if (null == allocator) {
+                allocator = new RootAllocator(Long.MAX_VALUE);
+            }
+
             FlightClient.Builder flightClientBuilder = FlightClient.builder(allocator, location);
             if (config.getVerifyServer() != null && !config.getVerifyServer()) {
                 flightClientBuilder.verifyServer(false);
@@ -67,7 +73,7 @@ public abstract class ArrowFlightClientHandler
             }
 
             FlightClient flightClient = flightClientBuilder.build();
-            return new ArrowFlightClient(flightClient, trustedCertificate, allocator);
+            return new ArrowFlightClient(flightClient, trustedCertificate);
         }
         catch (Exception ex) {
             throw new ArrowException(ARROW_FLIGHT_ERROR, "The flight client could not be obtained." + ex.getMessage(), ex);
@@ -93,5 +99,15 @@ public abstract class ArrowFlightClientHandler
         catch (Exception e) {
             throw new ArrowException(ARROW_FLIGHT_ERROR, "The flight information could not be obtained from the flight server." + e.getMessage(), e);
         }
+    }
+
+    public Optional<Schema> getSchema(FlightDescriptor flightDescriptor, ConnectorSession connectorSession)
+    {
+        return getFlightInfo(flightDescriptor, connectorSession).getSchemaOptional();
+    }
+
+    public void closeRootallocator()
+    {
+        allocator.close();
     }
 }
