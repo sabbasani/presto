@@ -14,6 +14,7 @@
 package com.facebook.plugin.arrow;
 
 import com.facebook.presto.common.block.Block;
+import com.facebook.presto.common.type.ArrayType;
 import com.facebook.presto.common.type.BigintType;
 import com.facebook.presto.common.type.BooleanType;
 import com.facebook.presto.common.type.DecimalType;
@@ -30,6 +31,9 @@ import org.apache.arrow.vector.IntVector;
 import org.apache.arrow.vector.SmallIntVector;
 import org.apache.arrow.vector.TimeStampMicroVector;
 import org.apache.arrow.vector.TinyIntVector;
+import org.apache.arrow.vector.complex.ListVector;
+import org.apache.arrow.vector.complex.impl.UnionListWriter;
+import org.testng.Assert;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
 
@@ -195,4 +199,42 @@ public class ArrowPageUtilsTest
         assertEquals(1000L, resultBlock.getLong(0));  // The 1st element should be 1000ms (1 second)
         assertEquals(2000L, resultBlock.getLong(1));  // The 2nd element should be 2000ms (2 seconds)
     }
+
+    @Test
+    public void testBuildBlockFromListVector() {
+        // Create a root allocator for Arrow vectors
+        try (BufferAllocator allocator = new RootAllocator();
+                ListVector listVector = ListVector.empty("listVector", allocator)) {
+
+            // Allocate the vector and get the writer
+            listVector.allocateNew();
+            UnionListWriter listWriter = listVector.getWriter();
+
+            int[] data = new int[] {1, 2, 3, 10, 20, 30, 100, 200, 300, 1000, 2000, 3000};
+            int tmpIndex = 0;
+
+            for (int i = 0; i < 4; i++) { // 4 lists to be added
+                listWriter.startList();
+                for (int j = 0; j < 3; j++) { // Each list has 3 integers
+                    listWriter.writeInt(data[tmpIndex]);
+                    tmpIndex++;
+                }
+                listWriter.endList();
+            }
+
+            // Set the number of lists
+            listVector.setValueCount(4);
+
+            // Create Presto ArrayType for Integer
+            ArrayType arrayType = new ArrayType(IntegerType.INTEGER);
+
+            // Call the method to test
+            Block block = ArrowPageUtils.buildBlockFromListVector(listVector, arrayType);
+
+            // Validate the result
+            Assert.assertEquals(block.getPositionCount(), 4); // 4 lists in the block
+
+        }
+    }
+
 }
