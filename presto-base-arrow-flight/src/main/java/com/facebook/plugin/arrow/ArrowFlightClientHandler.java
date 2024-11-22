@@ -82,6 +82,11 @@ public abstract class ArrowFlightClientHandler
 
     protected abstract CredentialCallOption getCallOptions(ConnectorSession connectorSession);
 
+    public ArrowFlightConfig getConfig()
+    {
+        return config;
+    }
+
     public ArrowFlightClient getClient(Optional<String> uri)
     {
         return initializeClient(uri);
