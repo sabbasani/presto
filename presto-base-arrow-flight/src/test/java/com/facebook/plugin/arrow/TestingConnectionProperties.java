@@ -13,14 +13,17 @@
  */
 package com.facebook.plugin.arrow;
 
-public final class TestingConnectionProperties
+import javax.annotation.concurrent.Immutable;
+
+@Immutable
+public class TestingConnectionProperties
 {
-    public final String database;
-    public final String password;
-    public Integer port;
-    public final String host;
-    public final Boolean ssl;
-    public final String username;
+    private final String database;
+    private final String password;
+    private Integer port;
+    private final String host;
+    private final Boolean ssl;
+    private final String username;
 
     public TestingConnectionProperties(String database, String password, String host, Boolean ssl, String username)
     {

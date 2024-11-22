@@ -70,7 +70,7 @@ public class ArrowPageUtils
     {
     }
 
-    static Block buildBlockFromVector(FieldVector vector, Type type)
+    public static Block buildBlockFromVector(FieldVector vector, Type type)
     {
         if (vector instanceof BitVector) {
             return buildBlockFromBitVector((BitVector) vector, type);

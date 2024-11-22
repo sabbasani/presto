@@ -160,7 +160,7 @@ public abstract class AbstractArrowMetadata
                     dataSourceSpecificSchemaName, dataSourceSpecificTableName);
 
             Optional<Schema> flightschema = clientHandler.getSchema(flightDescriptor, connectorSession);
-            List<Field> fields = flightschema.map(schema1 -> schema1.getFields()).orElse(Collections.emptyList());
+            List<Field> fields = flightschema.map(Schema :: getFields).orElse(Collections.emptyList());
             return fields;
         }
         catch (Exception e) {

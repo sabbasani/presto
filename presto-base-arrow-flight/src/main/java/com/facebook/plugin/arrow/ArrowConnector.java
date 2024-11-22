@@ -41,7 +41,6 @@ public class ArrowConnector
             ConnectorHandleResolver handleResolver,
             ConnectorSplitManager splitManager,
             ConnectorPageSourceProvider pageSourceProvider,
-
             ArrowFlightClientHandler arrowFlightClientHandler)
     {
         this.metadata = requireNonNull(metadata, "Metadata is null");
