@@ -132,7 +132,7 @@ public abstract class AbstractArrowMetadata
         }
     }
 
-    protected abstract FlightDescriptor getFlightDescriptor(ArrowFlightConfig config, Optional<String> query, String schema, String table);
+    protected abstract FlightDescriptor getFlightDescriptor(Optional<String> query, String schema, String table);
 
     protected abstract String getDataSourceSpecificSchemaName(ArrowFlightConfig config, String schemaName);
 
@@ -156,11 +156,11 @@ public abstract class AbstractArrowMetadata
         try {
             String dataSourceSpecificSchemaName = getDataSourceSpecificSchemaName(config, schema);
             String dataSourceSpecificTableName = getDataSourceSpecificTableName(config, table);
-            FlightDescriptor flightDescriptor = getFlightDescriptor(config, Optional.empty(),
+            FlightDescriptor flightDescriptor = getFlightDescriptor(Optional.empty(),
                     dataSourceSpecificSchemaName, dataSourceSpecificTableName);
 
             Optional<Schema> flightschema = clientHandler.getSchema(flightDescriptor, connectorSession);
-            List<Field> fields = flightschema.map(Schema :: getFields).orElse(Collections.emptyList());
+            List<Field> fields = flightschema.map(Schema::getFields).orElse(Collections.emptyList());
             return fields;
         }
         catch (Exception e) {

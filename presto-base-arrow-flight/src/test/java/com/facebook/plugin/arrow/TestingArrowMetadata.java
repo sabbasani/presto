@@ -145,9 +145,9 @@ public class TestingArrowMetadata
     }
 
     @Override
-    protected FlightDescriptor getFlightDescriptor(ArrowFlightConfig config, Optional<String> query, String schema, String table)
+    protected FlightDescriptor getFlightDescriptor(Optional<String> query, String schema, String table)
     {
-        TestingArrowFlightRequest request = new TestingArrowFlightRequest(config, testconfig, schema, table, query, nodeManager.getWorkerNodes().size());
+        TestingArrowFlightRequest request = new TestingArrowFlightRequest(this.config, testconfig, schema, table, query, nodeManager.getWorkerNodes().size());
         return FlightDescriptor.command(request.getCommand());
     }
 
