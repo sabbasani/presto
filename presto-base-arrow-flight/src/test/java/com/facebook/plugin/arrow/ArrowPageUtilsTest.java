@@ -31,18 +31,26 @@ import org.apache.arrow.vector.IntVector;
 import org.apache.arrow.vector.SmallIntVector;
 import org.apache.arrow.vector.TimeStampMicroVector;
 import org.apache.arrow.vector.TinyIntVector;
+import org.apache.arrow.vector.VarCharVector;
 import org.apache.arrow.vector.complex.ListVector;
 import org.apache.arrow.vector.complex.impl.UnionListWriter;
+import org.apache.arrow.vector.dictionary.Dictionary;
+import org.apache.arrow.vector.dictionary.DictionaryEncoder;
+import org.apache.arrow.vector.types.pojo.DictionaryEncoding;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
 
 import java.math.BigDecimal;
+import java.nio.charset.StandardCharsets;
 
 import static org.testng.Assert.assertEquals;
+import static org.testng.Assert.assertNotNull;
 import static org.testng.Assert.assertTrue;
 
 public class ArrowPageUtilsTest
 {
+    private static final int DICTIONARY_LENGTH = 10;
+    private static final int VECTOR_LENGTH = 50;
     private BufferAllocator allocator;
 
     @BeforeClass
@@ -233,5 +241,40 @@ public class ArrowPageUtilsTest
             // Validate the result
             assertEquals(block.getPositionCount(), 4); // 4 lists in the block
         }
+    }
+
+    @Test
+    public void testProcessDictionaryVector()
+    {
+        // Create dictionary vector
+        VarCharVector dictionaryVector = new VarCharVector("dictionary", allocator);
+        dictionaryVector.allocateNew(DICTIONARY_LENGTH);
+        for (int i = 0; i < DICTIONARY_LENGTH; i++) {
+            dictionaryVector.setSafe(i, String.valueOf(i).getBytes(StandardCharsets.UTF_8));
+        }
+        dictionaryVector.setValueCount(DICTIONARY_LENGTH);
+
+        // Create raw vector
+        VarCharVector rawVector = new VarCharVector("raw", allocator);
+        rawVector.allocateNew(VECTOR_LENGTH);
+        for (int i = 0; i < VECTOR_LENGTH; i++) {
+            int value = i % DICTIONARY_LENGTH;
+            rawVector.setSafe(i, String.valueOf(value).getBytes(StandardCharsets.UTF_8));
+        }
+        rawVector.setValueCount(VECTOR_LENGTH);
+
+        // Encode using dictionary
+        Dictionary dictionary = new Dictionary(dictionaryVector, new DictionaryEncoding(1L, false, null));
+        IntVector encodedVector = (IntVector) DictionaryEncoder.encode(rawVector, dictionary);
+
+        // Decode back to original
+        VarCharVector decodedVector = (VarCharVector) DictionaryEncoder.decode(encodedVector, dictionary);
+
+        // Process the dictionary vector
+        Block result = ArrowPageUtils.buildBlockFromEncodedVector(encodedVector, dictionaryVector);
+
+        // Verify the result
+        assertNotNull(result, "The BlockBuilder should not be null.");
+        assertEquals(result.getPositionCount(), 50);
     }
 }

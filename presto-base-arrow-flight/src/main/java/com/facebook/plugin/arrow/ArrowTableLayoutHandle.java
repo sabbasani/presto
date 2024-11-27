@@ -20,6 +20,7 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 import java.util.List;
+import java.util.Objects;
 
 import static java.util.Objects.requireNonNull;
 
@@ -32,8 +33,8 @@ public class ArrowTableLayoutHandle
 
     @JsonCreator
     public ArrowTableLayoutHandle(@JsonProperty("table") ArrowTableHandle table,
-                                  @JsonProperty("columnHandles") List<ArrowColumnHandle> columnHandles,
-                                  @JsonProperty("tupleDomain") TupleDomain<ColumnHandle> domain)
+            @JsonProperty("columnHandles") List<ArrowColumnHandle> columnHandles,
+            @JsonProperty("tupleDomain") TupleDomain<ColumnHandle> domain)
     {
         this.tableHandle = requireNonNull(table, "table is null");
         this.columnHandles = requireNonNull(columnHandles, "columns are null");
@@ -62,5 +63,24 @@ public class ArrowTableLayoutHandle
     public String toString()
     {
         return "tableHandle:" + tableHandle + ", columnHandles:" + columnHandles + ", tupleDomain:" + tupleDomain;
+    }
+
+    @Override
+    public boolean equals(Object o)
+    {
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+        ArrowTableLayoutHandle arrowTableLayoutHandle = (ArrowTableLayoutHandle) o;
+        return Objects.equals(tableHandle, arrowTableLayoutHandle.tableHandle) && Objects.equals(columnHandles, arrowTableLayoutHandle.columnHandles) && Objects.equals(tupleDomain, arrowTableLayoutHandle.tupleDomain);
+    }
+
+    @Override
+    public int hashCode()
+    {
+        return Objects.hash(tableHandle, columnHandles, tupleDomain);
     }
 }

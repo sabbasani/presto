@@ -145,7 +145,39 @@ public class ArrowPageUtils
         else if (vector instanceof ListVector) {
             return buildBlockFromListVector((ListVector) vector, type);
         }
+
         throw new UnsupportedOperationException("Unsupported vector type: " + vector.getClass().getSimpleName());
+    }
+
+    public static Block buildBlockFromEncodedVector(IntVector encodedVector, VarCharVector dictionary)
+    {
+        // Ensure the dictionary vector is valid
+        if (dictionary == null || encodedVector == null) {
+            throw new IllegalArgumentException("Both encodedVector and dictionary must be non-null.");
+        }
+
+        // Create a BlockBuilder for VARCHAR
+        BlockBuilder builder = VarcharType.VARCHAR.createBlockBuilder(null, encodedVector.getValueCount());
+
+        // Iterate through the encoded vector and retrieve values from the dictionary
+        for (int i = 0; i < encodedVector.getValueCount(); i++) {
+            if (encodedVector.isNull(i)) {
+                builder.appendNull(); // Append null if the index is null
+            }
+            else {
+                int dictionaryIndex = encodedVector.get(i);
+                if (dictionary.isNull(dictionaryIndex)) {
+                    builder.appendNull(); // Append null if the dictionary value is null
+                }
+                else {
+                    byte[] valueBytes = dictionary.get(dictionaryIndex);
+                    String value = new String(valueBytes, StandardCharsets.UTF_8);
+                    VarcharType.VARCHAR.writeSlice(builder, Slices.utf8Slice(value)); // Append the dictionary value
+                }
+            }
+        }
+
+        return builder.build();
     }
 
     public static Block buildBlockFromTimeMilliTZVector(TimeStampMilliTZVector vector, Type type)
