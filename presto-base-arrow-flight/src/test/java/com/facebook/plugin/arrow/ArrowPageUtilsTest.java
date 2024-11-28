@@ -14,14 +14,22 @@
 package com.facebook.plugin.arrow;
 
 import com.facebook.presto.common.block.Block;
+import com.facebook.presto.common.block.BlockBuilder;
 import com.facebook.presto.common.type.ArrayType;
 import com.facebook.presto.common.type.BigintType;
 import com.facebook.presto.common.type.BooleanType;
+import com.facebook.presto.common.type.DateType;
 import com.facebook.presto.common.type.DecimalType;
+import com.facebook.presto.common.type.Decimals;
+import com.facebook.presto.common.type.DoubleType;
 import com.facebook.presto.common.type.IntegerType;
+import com.facebook.presto.common.type.RowType;
 import com.facebook.presto.common.type.SmallintType;
 import com.facebook.presto.common.type.TimestampType;
 import com.facebook.presto.common.type.TinyintType;
+import com.facebook.presto.common.type.Type;
+import com.facebook.presto.common.type.VarcharType;
+import io.airlift.slice.Slice;
 import org.apache.arrow.memory.BufferAllocator;
 import org.apache.arrow.memory.RootAllocator;
 import org.apache.arrow.vector.BigIntVector;
@@ -41,7 +49,12 @@ import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
 
 import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
+import java.time.LocalDate;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Optional;
 
 import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertNotNull;
@@ -276,5 +289,213 @@ public class ArrowPageUtilsTest
         // Verify the result
         assertNotNull(result, "The BlockBuilder should not be null.");
         assertEquals(result.getPositionCount(), 50);
+    }
+
+    @Test
+    public void testHandleVarcharType()
+    {
+        Type varcharType = VarcharType.createUnboundedVarcharType();
+        BlockBuilder builder = varcharType.createBlockBuilder(null, 1);
+
+        String value = "test_string";
+        ArrowPageUtils.handleVarcharType(varcharType, builder, value);
+
+        Block block = builder.build();
+        Slice result = varcharType.getSlice(block, 0);
+        assertEquals(result.toStringUtf8(), value);
+    }
+
+    @Test
+    public void testHandleSmallintType()
+    {
+        Type smallintType = SmallintType.SMALLINT;
+        BlockBuilder builder = smallintType.createBlockBuilder(null, 1);
+
+        short value = 42;
+        ArrowPageUtils.handleSmallintType(smallintType, builder, value);
+
+        Block block = builder.build();
+        long result = smallintType.getLong(block, 0);
+        assertEquals(result, value);
+    }
+
+    @Test
+    public void testHandleTinyintType()
+    {
+        Type tinyintType = TinyintType.TINYINT;
+        BlockBuilder builder = tinyintType.createBlockBuilder(null, 1);
+
+        byte value = 7;
+        ArrowPageUtils.handleTinyintType(tinyintType, builder, value);
+
+        Block block = builder.build();
+        long result = tinyintType.getLong(block, 0);
+        assertEquals(result, value);
+    }
+
+    @Test
+    public void testHandleBigintType()
+    {
+        Type bigintType = BigintType.BIGINT;
+        BlockBuilder builder = bigintType.createBlockBuilder(null, 1);
+
+        long value = 123456789L;
+        ArrowPageUtils.handleBigintType(bigintType, builder, value);
+
+        Block block = builder.build();
+        long result = bigintType.getLong(block, 0);
+        assertEquals(result, value);
+    }
+
+    @Test
+    public void testHandleIntegerType()
+    {
+        Type integerType = IntegerType.INTEGER;
+        BlockBuilder builder = integerType.createBlockBuilder(null, 1);
+
+        int value = 42;
+        ArrowPageUtils.handleIntegerType(integerType, builder, value);
+
+        Block block = builder.build();
+        long result = integerType.getLong(block, 0);
+        assertEquals(result, value);
+    }
+
+    @Test
+    public void testHandleDoubleType()
+    {
+        Type doubleType = DoubleType.DOUBLE;
+        BlockBuilder builder = doubleType.createBlockBuilder(null, 1);
+
+        double value = 42.42;
+        ArrowPageUtils.handleDoubleType(doubleType, builder, value);
+
+        Block block = builder.build();
+        double result = doubleType.getDouble(block, 0);
+        assertEquals(result, value, 0.001);
+    }
+
+    @Test
+    public void testHandleBooleanType()
+    {
+        Type booleanType = BooleanType.BOOLEAN;
+        BlockBuilder builder = booleanType.createBlockBuilder(null, 1);
+
+        boolean value = true;
+        ArrowPageUtils.handleBooleanType(booleanType, builder, value);
+
+        Block block = builder.build();
+        boolean result = booleanType.getBoolean(block, 0);
+        assertEquals(result, value);
+    }
+
+    @Test
+    public void testHandleArrayType()
+    {
+        Type elementType = IntegerType.INTEGER;
+        ArrayType arrayType = new ArrayType(elementType);
+        BlockBuilder builder = arrayType.createBlockBuilder(null, 1);
+
+        List<Integer> values = Arrays.asList(1, 2, 3);
+        ArrowPageUtils.handleArrayType(arrayType, builder, values);
+
+        Block block = builder.build();
+        Block arrayBlock = arrayType.getObject(block, 0);
+        assertEquals(arrayBlock.getPositionCount(), values.size());
+        for (int i = 0; i < values.size(); i++) {
+            assertEquals(elementType.getLong(arrayBlock, i), values.get(i).longValue());
+        }
+    }
+
+    @Test
+    public void testHandleRowType()
+    {
+        RowType.Field field1 = new RowType.Field(Optional.of("field1"), IntegerType.INTEGER);
+        RowType.Field field2 = new RowType.Field(Optional.of("field2"), VarcharType.createUnboundedVarcharType());
+        RowType rowType = RowType.from(Arrays.asList(field1, field2));
+        BlockBuilder builder = rowType.createBlockBuilder(null, 1);
+
+        List<Object> rowValues = Arrays.asList(42, "test");
+        ArrowPageUtils.handleRowType(rowType, builder, rowValues);
+
+        Block block = builder.build();
+        Block rowBlock = rowType.getObject(block, 0);
+        assertEquals(IntegerType.INTEGER.getLong(rowBlock, 0), 42);
+        assertEquals(VarcharType.createUnboundedVarcharType().getSlice(rowBlock, 1).toStringUtf8(), "test");
+    }
+
+    @Test
+    public void testHandleDateType()
+    {
+        Type dateType = DateType.DATE;
+        BlockBuilder builder = dateType.createBlockBuilder(null, 1);
+
+        LocalDate value = LocalDate.of(2020, 1, 1);
+        ArrowPageUtils.handleDateType(dateType, builder, value);
+
+        Block block = builder.build();
+        long result = dateType.getLong(block, 0);
+        assertEquals(result, value.toEpochDay());
+    }
+
+    @Test
+    public void testHandleTimestampType()
+    {
+        Type timestampType = TimestampType.TIMESTAMP;
+        BlockBuilder builder = timestampType.createBlockBuilder(null, 1);
+
+        long value = 1609459200000L; // Jan 1, 2021, 00:00:00 UTC
+        ArrowPageUtils.handleTimestampType(timestampType, builder, value);
+
+        Block block = builder.build();
+        long result = timestampType.getLong(block, 0);
+        assertEquals(result, value);
+    }
+
+    @Test
+    public void testHandleTimestampTypeWithSqlTimestamp()
+    {
+        Type timestampType = TimestampType.TIMESTAMP;
+        BlockBuilder builder = timestampType.createBlockBuilder(null, 1);
+
+        java.sql.Timestamp timestamp = java.sql.Timestamp.valueOf("2021-01-01 00:00:00");
+        long expectedMillis = timestamp.getTime();
+        ArrowPageUtils.handleTimestampType(timestampType, builder, timestamp);
+
+        Block block = builder.build();
+        long result = timestampType.getLong(block, 0);
+        assertEquals(result, expectedMillis);
+    }
+
+    @Test
+    public void testShortDecimalRetrieval()
+    {
+        DecimalType shortDecimalType = DecimalType.createDecimalType(10, 2); // Precision: 10, Scale: 2
+        BlockBuilder builder = shortDecimalType.createBlockBuilder(null, 1);
+
+        BigDecimal decimalValue = new BigDecimal("12345.67");
+        ArrowPageUtils.handleDecimalType(shortDecimalType, builder, decimalValue);
+
+        Block block = builder.build();
+        long unscaledValue = shortDecimalType.getLong(block, 0); // Unscaled value: 1234567
+        BigDecimal result = BigDecimal.valueOf(unscaledValue).movePointLeft(shortDecimalType.getScale());
+        assertEquals(result, decimalValue);
+    }
+
+    @Test
+    public void testLongDecimalRetrieval()
+    {
+        // Create a DecimalType with precision 38 and scale 10
+        DecimalType longDecimalType = DecimalType.createDecimalType(38, 10);
+        BlockBuilder builder = longDecimalType.createBlockBuilder(null, 1);
+        BigDecimal decimalValue = new BigDecimal("1234567890.1234567890");
+        ArrowPageUtils.handleDecimalType(longDecimalType, builder, decimalValue);
+        // Build the block after inserting the decimal value
+        Block block = builder.build();
+        Slice unscaledSlice = longDecimalType.getSlice(block, 0);
+        BigInteger unscaledValue = Decimals.decodeUnscaledValue(unscaledSlice);
+        BigDecimal result = new BigDecimal(unscaledValue).movePointLeft(longDecimalType.getScale());
+        // Assert the decoded result is equal to the original decimal value
+        assertEquals(result, decimalValue);
     }
 }

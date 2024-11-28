@@ -502,7 +502,6 @@ public class ArrowPageUtils
         }
         return builder.build();
     }
-
     public static Block buildBlockFromTimeStampSecVector(TimeStampSecVector vector, Type type)
     {
         if (!(type instanceof TimestampType)) {
@@ -589,7 +588,7 @@ public class ArrowPageUtils
         return arrayBuilder.build();
     }
 
-    private static void appendValueToBuilder(Type type, BlockBuilder builder, Object value)
+    public static void appendValueToBuilder(Type type, BlockBuilder builder, Object value)
     {
         if (value == null) {
             builder.appendNull();
@@ -637,13 +636,13 @@ public class ArrowPageUtils
         }
     }
 
-    private static void handleVarcharType(Type type, BlockBuilder builder, Object value)
+    public static void handleVarcharType(Type type, BlockBuilder builder, Object value)
     {
         Slice slice = Slices.utf8Slice(value.toString());
         type.writeSlice(builder, slice);
     }
 
-    private static void handleSmallintType(Type type, BlockBuilder builder, Object value)
+    public static void handleSmallintType(Type type, BlockBuilder builder, Object value)
     {
         if (value instanceof Number) {
             type.writeLong(builder, ((Number) value).shortValue());
@@ -664,7 +663,7 @@ public class ArrowPageUtils
         }
     }
 
-    private static void handleTinyintType(Type type, BlockBuilder builder, Object value)
+    public static void handleTinyintType(Type type, BlockBuilder builder, Object value)
     {
         if (value instanceof Number) {
             type.writeLong(builder, ((Number) value).byteValue());
@@ -685,7 +684,7 @@ public class ArrowPageUtils
         }
     }
 
-    private static void handleBigintType(Type type, BlockBuilder builder, Object value)
+    public static void handleBigintType(Type type, BlockBuilder builder, Object value)
     {
         if (value instanceof Long) {
             type.writeLong(builder, (Long) value);
@@ -709,7 +708,7 @@ public class ArrowPageUtils
         }
     }
 
-    private static void handleIntegerType(Type type, BlockBuilder builder, Object value)
+    public static void handleIntegerType(Type type, BlockBuilder builder, Object value)
     {
         if (value instanceof Integer) {
             type.writeLong(builder, (Integer) value);
@@ -730,7 +729,7 @@ public class ArrowPageUtils
         }
     }
 
-    private static void handleDoubleType(Type type, BlockBuilder builder, Object value)
+    public static void handleDoubleType(Type type, BlockBuilder builder, Object value)
     {
         if (value instanceof Double) {
             type.writeDouble(builder, (Double) value);
@@ -754,7 +753,7 @@ public class ArrowPageUtils
         }
     }
 
-    private static void handleBooleanType(Type type, BlockBuilder builder, Object value)
+    public static void handleBooleanType(Type type, BlockBuilder builder, Object value)
     {
         if (value instanceof Boolean) {
             type.writeBoolean(builder, (Boolean) value);
@@ -764,16 +763,28 @@ public class ArrowPageUtils
         }
     }
 
-    private static void handleDecimalType(DecimalType type, BlockBuilder builder, Object value)
+    public static void handleDecimalType(DecimalType type, BlockBuilder builder, Object value)
     {
         if (value instanceof BigDecimal) {
             BigDecimal decimalValue = (BigDecimal) value;
             if (type.isShort()) {
-                builder.writeLong(decimalValue.unscaledValue().longValue());
+                // Handle ShortDecimalType
+                long unscaledValue = decimalValue.unscaledValue().longValue();
+                type.writeLong(builder, unscaledValue);
             }
             else {
+                // Handle LongDecimalType
                 Slice slice = Decimals.encodeScaledValue(decimalValue);
                 type.writeSlice(builder, slice);
+            }
+        }
+        else if (value instanceof Long) {
+            // Direct handling for ShortDecimalType using long
+            if (type.isShort()) {
+                type.writeLong(builder, (Long) value);
+            }
+            else {
+                throw new IllegalArgumentException("Long value is not supported for LongDecimalType.");
             }
         }
         else {
@@ -781,7 +792,7 @@ public class ArrowPageUtils
         }
     }
 
-    private static void handleArrayType(ArrayType type, BlockBuilder builder, Object value)
+    public static void handleArrayType(ArrayType type, BlockBuilder builder, Object value)
     {
         Type elementType = type.getElementType();
         BlockBuilder arrayBuilder = builder.beginBlockEntry();
@@ -791,7 +802,7 @@ public class ArrowPageUtils
         builder.closeEntry();
     }
 
-    private static void handleRowType(RowType type, BlockBuilder builder, Object value)
+    public static void handleRowType(RowType type, BlockBuilder builder, Object value)
     {
         List<Object> rowValues = (List<Object>) value;
         BlockBuilder rowBuilder = builder.beginBlockEntry();
@@ -803,7 +814,7 @@ public class ArrowPageUtils
         builder.closeEntry();
     }
 
-    private static void handleDateType(Type type, BlockBuilder builder, Object value)
+    public static void handleDateType(Type type, BlockBuilder builder, Object value)
     {
         if (value instanceof java.sql.Date || value instanceof java.time.LocalDate) {
             int daysSinceEpoch = (int) (value instanceof java.sql.Date
@@ -816,13 +827,18 @@ public class ArrowPageUtils
         }
     }
 
-    private static void handleTimestampType(Type type, BlockBuilder builder, Object value)
+    public static void handleTimestampType(Type type, BlockBuilder builder, Object value)
     {
-        if (value instanceof java.sql.Timestamp || value instanceof java.time.Instant) {
-            long millis = value instanceof java.sql.Timestamp
-                    ? ((java.sql.Timestamp) value).getTime()
-                    : ((java.time.Instant) value).toEpochMilli();
+        if (value instanceof java.sql.Timestamp) {
+            long millis = ((java.sql.Timestamp) value).getTime();
             type.writeLong(builder, millis);
+        }
+        else if (value instanceof java.time.Instant) {
+            long millis = ((java.time.Instant) value).toEpochMilli();
+            type.writeLong(builder, millis);
+        }
+        else if (value instanceof Long) { // Handle long epoch milliseconds directly
+            type.writeLong(builder, (Long) value);
         }
         else {
             throw new IllegalArgumentException("Unsupported type for TimestampType: " + value.getClass());
