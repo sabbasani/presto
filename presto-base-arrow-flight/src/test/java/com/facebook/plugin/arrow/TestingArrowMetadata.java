@@ -47,16 +47,16 @@ public class TestingArrowMetadata
     private static final Logger logger = Logger.get(TestingArrowMetadata.class);
     private static final ObjectMapper objectMapper = new ObjectMapper();
     private final NodeManager nodeManager;
-    private final TestingArrowFlightConfig testconfig;
+    private final TestingArrowFlightConfig testConfig;
     private final ArrowFlightClientHandler clientHandler;
     private final ArrowFlightConfig config;
 
     @Inject
-    public TestingArrowMetadata(ArrowFlightConfig config, ArrowFlightClientHandler clientHandler, NodeManager nodeManager, TestingArrowFlightConfig testconfig)
+    public TestingArrowMetadata(ArrowFlightClientHandler clientHandler, NodeManager nodeManager, TestingArrowFlightConfig testConfig, ArrowFlightConfig config)
     {
         super(config, clientHandler);
         this.nodeManager = nodeManager;
-        this.testconfig = testconfig;
+        this.testConfig = testConfig;
         this.clientHandler = clientHandler;
         this.config = config;
     }
@@ -90,7 +90,7 @@ public class TestingArrowMetadata
     {
         try (ArrowFlightClient client = clientHandler.getClient(Optional.empty())) {
             List<String> names = new ArrayList<>();
-            TestingArrowFlightRequest request = getArrowFlightRequest(config, schema.orElse(null));
+            TestingArrowFlightRequest request = getArrowFlightRequest(schema.orElse(null));
             ObjectNode rootNode = (ObjectNode) objectMapper.readTree(request.getCommand());
 
             String modifiedQueryJson = objectMapper.writeValueAsString(rootNode);
@@ -147,12 +147,12 @@ public class TestingArrowMetadata
     @Override
     protected FlightDescriptor getFlightDescriptor(Optional<String> query, String schema, String table)
     {
-        TestingArrowFlightRequest request = new TestingArrowFlightRequest(this.config, testconfig, schema, table, query, nodeManager.getWorkerNodes().size());
+        TestingArrowFlightRequest request = new TestingArrowFlightRequest(this.config, testConfig, schema, table, query, nodeManager.getWorkerNodes().size());
         return FlightDescriptor.command(request.getCommand());
     }
 
-    private TestingArrowFlightRequest getArrowFlightRequest(ArrowFlightConfig config, String schema)
+    private TestingArrowFlightRequest getArrowFlightRequest(String schema)
     {
-        return new TestingArrowFlightRequest(config, schema, nodeManager.getWorkerNodes().size(), testconfig);
+        return new TestingArrowFlightRequest(config, schema, nodeManager.getWorkerNodes().size(), testConfig);
     }
 }

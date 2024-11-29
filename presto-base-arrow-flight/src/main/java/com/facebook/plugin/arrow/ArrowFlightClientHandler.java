@@ -60,7 +60,7 @@ public abstract class ArrowFlightClientHandler
             }
 
             if (null == allocator) {
-                allocator = new RootAllocator(Long.MAX_VALUE);
+                initializeAllocator();
             }
 
             FlightClient.Builder flightClientBuilder = FlightClient.builder(allocator, location);
@@ -77,6 +77,13 @@ public abstract class ArrowFlightClientHandler
         }
         catch (Exception ex) {
             throw new ArrowException(ARROW_FLIGHT_ERROR, "The flight client could not be obtained." + ex.getMessage(), ex);
+        }
+    }
+
+    private synchronized void initializeAllocator()
+    {
+        if (allocator == null) {
+            allocator = new RootAllocator(Long.MAX_VALUE);
         }
     }
 

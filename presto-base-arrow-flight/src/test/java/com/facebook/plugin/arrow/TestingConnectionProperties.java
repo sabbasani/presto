@@ -20,7 +20,6 @@ public class TestingConnectionProperties
 {
     private final String database;
     private final String password;
-    private Integer port;
     private final String host;
     private final Boolean ssl;
     private final String username;

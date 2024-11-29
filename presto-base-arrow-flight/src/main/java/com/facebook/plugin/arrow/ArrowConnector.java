@@ -44,7 +44,7 @@ public class ArrowConnector
             ArrowFlightClientHandler arrowFlightClientHandler)
     {
         this.metadata = requireNonNull(metadata, "Metadata is null");
-        this.handleResolver = requireNonNull(handleResolver, "Metadata is null");
+        this.handleResolver = requireNonNull(handleResolver, "handleResolver is null");
         this.splitManager = requireNonNull(splitManager, "SplitManager is null");
         this.pageSourceProvider = requireNonNull(pageSourceProvider, "PageSinkProvider is null");
         this.arrowFlightClientHandler = requireNonNull(arrowFlightClientHandler, "arrow flight handler is null");

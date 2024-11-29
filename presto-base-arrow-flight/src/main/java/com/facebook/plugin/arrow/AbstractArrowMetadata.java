@@ -38,8 +38,10 @@ import com.facebook.presto.spi.ConnectorTableLayoutResult;
 import com.facebook.presto.spi.ConnectorTableMetadata;
 import com.facebook.presto.spi.Constraint;
 import com.facebook.presto.spi.NotFoundException;
+import com.facebook.presto.spi.PrestoException;
 import com.facebook.presto.spi.SchemaTableName;
 import com.facebook.presto.spi.SchemaTablePrefix;
+import com.facebook.presto.spi.StandardErrorCode;
 import com.facebook.presto.spi.connector.ConnectorMetadata;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
@@ -192,6 +194,13 @@ public abstract class AbstractArrowMetadata
     @Override
     public List<ConnectorTableLayoutResult> getTableLayouts(ConnectorSession session, ConnectorTableHandle table, Constraint<ColumnHandle> constraint, Optional<Set<ColumnHandle>> desiredColumns)
     {
+        if (!(table instanceof ArrowTableHandle)) {
+            throw new PrestoException(
+                    StandardErrorCode.INVALID_CAST_ARGUMENT,
+                    "Invalid table handle: Expected an instance of ArrowTableHandle but received "
+                            + table.getClass().getSimpleName() + ". Please check the table type being used.");
+        }
+
         ArrowTableHandle tableHandle = (ArrowTableHandle) table;
 
         List<ArrowColumnHandle> columns = new ArrayList<>();
