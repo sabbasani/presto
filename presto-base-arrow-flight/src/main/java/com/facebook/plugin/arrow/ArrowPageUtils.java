@@ -24,12 +24,14 @@ import com.facebook.presto.common.type.DecimalType;
 import com.facebook.presto.common.type.Decimals;
 import com.facebook.presto.common.type.DoubleType;
 import com.facebook.presto.common.type.IntegerType;
+import com.facebook.presto.common.type.RealType;
 import com.facebook.presto.common.type.RowType;
 import com.facebook.presto.common.type.SmallintType;
 import com.facebook.presto.common.type.TimeType;
 import com.facebook.presto.common.type.TimestampType;
 import com.facebook.presto.common.type.TinyintType;
 import com.facebook.presto.common.type.Type;
+import com.facebook.presto.common.type.VarbinaryType;
 import com.facebook.presto.common.type.VarcharType;
 import com.google.common.base.CharMatcher;
 import io.airlift.slice.Slice;
@@ -53,10 +55,16 @@ import org.apache.arrow.vector.TimeStampMilliTZVector;
 import org.apache.arrow.vector.TimeStampMilliVector;
 import org.apache.arrow.vector.TimeStampSecVector;
 import org.apache.arrow.vector.TinyIntVector;
+import org.apache.arrow.vector.ValueVector;
 import org.apache.arrow.vector.VarBinaryVector;
 import org.apache.arrow.vector.VarCharVector;
 import org.apache.arrow.vector.complex.ListVector;
 import org.apache.arrow.vector.complex.impl.UnionListReader;
+import org.apache.arrow.vector.dictionary.Dictionary;
+import org.apache.arrow.vector.dictionary.DictionaryEncoder;
+import org.apache.arrow.vector.types.FloatingPointPrecision;
+import org.apache.arrow.vector.types.pojo.ArrowType;
+import org.apache.arrow.vector.types.pojo.DictionaryEncoding;
 import org.apache.arrow.vector.util.JsonStringArrayList;
 
 import java.math.BigDecimal;
@@ -149,35 +157,112 @@ public class ArrowPageUtils
         throw new UnsupportedOperationException("Unsupported vector type: " + vector.getClass().getSimpleName());
     }
 
-    public static Block buildBlockFromEncodedVector(IntVector encodedVector, VarCharVector dictionary)
+    public static Block buildBlockFromEncodedVector(FieldVector encodedVector, FieldVector dictionary)
     {
-        // Ensure the dictionary vector is valid
-        if (dictionary == null || encodedVector == null) {
+        // Validate inputs
+        if (encodedVector == null || dictionary == null) {
             throw new IllegalArgumentException("Both encodedVector and dictionary must be non-null.");
         }
 
-        // Create a BlockBuilder for VARCHAR
-        BlockBuilder builder = VarcharType.VARCHAR.createBlockBuilder(null, encodedVector.getValueCount());
+        // Create a Dictionary object
+        Dictionary arrowDictionary = new Dictionary(dictionary, new DictionaryEncoding(1L, false, null));
 
-        // Iterate through the encoded vector and retrieve values from the dictionary
-        for (int i = 0; i < encodedVector.getValueCount(); i++) {
-            if (encodedVector.isNull(i)) {
-                builder.appendNull(); // Append null if the index is null
+        // Decode the encoded vector using the dictionary
+        ValueVector decodedVector = DictionaryEncoder.decode(encodedVector, arrowDictionary);
+
+        // Create a BlockBuilder for the decoded vector's data type
+        Type prestoType = getPrestoTypeFromArrowType(decodedVector.getField().getType());
+        BlockBuilder builder = prestoType.createBlockBuilder(null, decodedVector.getValueCount());
+
+        // Populate the block dynamically based on vector type
+        for (int i = 0; i < decodedVector.getValueCount(); i++) {
+            if (decodedVector.isNull(i)) {
+                builder.appendNull(); // Append null for null values
             }
             else {
-                int dictionaryIndex = encodedVector.get(i);
-                if (dictionary.isNull(dictionaryIndex)) {
-                    builder.appendNull(); // Append null if the dictionary value is null
-                }
-                else {
-                    byte[] valueBytes = dictionary.get(dictionaryIndex);
-                    String value = new String(valueBytes, StandardCharsets.UTF_8);
-                    VarcharType.VARCHAR.writeSlice(builder, Slices.utf8Slice(value)); // Append the dictionary value
-                }
+                // Handle based on vector type
+                appendValueToBlock(decodedVector, i, prestoType, builder);
             }
         }
 
         return builder.build();
+    }
+
+    private static Type getPrestoTypeFromArrowType(ArrowType arrowType)
+    {
+        if (arrowType instanceof ArrowType.Utf8) {
+            return VarcharType.VARCHAR;
+        }
+        else if (arrowType instanceof ArrowType.Int) {
+            ArrowType.Int intType = (ArrowType.Int) arrowType;
+            if (intType.getBitWidth() == 8 || intType.getBitWidth() == 16 || intType.getBitWidth() == 32) {
+                return IntegerType.INTEGER;
+            }
+            else if (intType.getBitWidth() == 64) {
+                return BigintType.BIGINT;
+            }
+        }
+        else if (arrowType instanceof ArrowType.FloatingPoint) {
+            ArrowType.FloatingPoint fpType = (ArrowType.FloatingPoint) arrowType;
+            FloatingPointPrecision precision = fpType.getPrecision();
+
+            if (precision == FloatingPointPrecision.SINGLE) { // 32-bit float
+                return RealType.REAL;
+            }
+            else if (precision == FloatingPointPrecision.DOUBLE) { // 64-bit float
+                return DoubleType.DOUBLE;
+            }
+            else {
+                throw new UnsupportedOperationException("Unsupported FloatingPoint precision: " + precision);
+            }
+        }
+        else if (arrowType instanceof ArrowType.Bool) {
+            return BooleanType.BOOLEAN;
+        }
+        else if (arrowType instanceof ArrowType.Binary) {
+            return VarbinaryType.VARBINARY;
+        }
+        else if (arrowType instanceof ArrowType.Decimal) {
+            return DecimalType.createDecimalType();
+        }
+        throw new UnsupportedOperationException("Unsupported ArrowType: " + arrowType);
+    }
+
+    private static void appendValueToBlock(ValueVector vector, int index, Type prestoType, BlockBuilder builder)
+    {
+        if (vector instanceof VarCharVector) {
+            VarCharVector varCharVector = (VarCharVector) vector;
+            byte[] valueBytes = varCharVector.get(index);
+            prestoType.writeSlice(builder, Slices.utf8Slice(new String(valueBytes, StandardCharsets.UTF_8)));
+        }
+        else if (vector instanceof IntVector) {
+            IntVector intVector = (IntVector) vector;
+            prestoType.writeLong(builder, intVector.get(index));
+        }
+        else if (vector instanceof BigIntVector) {
+            BigIntVector bigIntVector = (BigIntVector) vector;
+            prestoType.writeLong(builder, bigIntVector.get(index));
+        }
+        else if (vector instanceof Float4Vector) {
+            Float4Vector floatVector = (Float4Vector) vector;
+            prestoType.writeLong(builder, Float.floatToRawIntBits(floatVector.get(index)));
+        }
+        else if (vector instanceof Float8Vector) {
+            Float8Vector doubleVector = (Float8Vector) vector;
+            prestoType.writeDouble(builder, doubleVector.get(index));
+        }
+        else if (vector instanceof BitVector) {
+            BitVector bitVector = (BitVector) vector;
+            prestoType.writeBoolean(builder, bitVector.get(index) == 1);
+        }
+        else if (vector instanceof VarBinaryVector) {
+            VarBinaryVector binaryVector = (VarBinaryVector) vector;
+            byte[] valueBytes = binaryVector.get(index);
+            prestoType.writeSlice(builder, Slices.wrappedBuffer(valueBytes));
+        }
+        else {
+            throw new UnsupportedOperationException("Unsupported vector type: " + vector.getClass());
+        }
     }
 
     public static Block buildBlockFromTimeMilliTZVector(TimeStampMilliTZVector vector, Type type)
@@ -502,6 +587,7 @@ public class ArrowPageUtils
         }
         return builder.build();
     }
+
     public static Block buildBlockFromTimeStampSecVector(TimeStampSecVector vector, Type type)
     {
         if (!(type instanceof TimestampType)) {
