@@ -301,7 +301,7 @@
             <dependency>
                 <groupId>org.apache.arrow</groupId>
                 <artifactId>arrow-algorithm</artifactId>
-                <version>18.0.0</version>
+                <version>${arrow.version}</version>
                 <scope>compile</scope>
             </dependency>
 

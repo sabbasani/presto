@@ -289,13 +289,13 @@ public class ArrowPageUtilsTest
     }
 
     @Test
-    public void testHandleVarcharType()
+    public void testWriteVarcharType()
     {
         Type varcharType = VarcharType.createUnboundedVarcharType();
         BlockBuilder builder = varcharType.createBlockBuilder(null, 1);
 
         String value = "test_string";
-        ArrowPageUtils.handleVarcharType(varcharType, builder, value);
+        ArrowPageUtils.writeVarcharType(varcharType, builder, value);
 
         Block block = builder.build();
         Slice result = varcharType.getSlice(block, 0);
@@ -303,13 +303,13 @@ public class ArrowPageUtilsTest
     }
 
     @Test
-    public void testHandleSmallintType()
+    public void testWriteSmallintType()
     {
         Type smallintType = SmallintType.SMALLINT;
         BlockBuilder builder = smallintType.createBlockBuilder(null, 1);
 
         short value = 42;
-        ArrowPageUtils.handleSmallintType(smallintType, builder, value);
+        ArrowPageUtils.writeSmallintType(smallintType, builder, value);
 
         Block block = builder.build();
         long result = smallintType.getLong(block, 0);
@@ -317,13 +317,13 @@ public class ArrowPageUtilsTest
     }
 
     @Test
-    public void testHandleTinyintType()
+    public void testWriteTinyintType()
     {
         Type tinyintType = TinyintType.TINYINT;
         BlockBuilder builder = tinyintType.createBlockBuilder(null, 1);
 
         byte value = 7;
-        ArrowPageUtils.handleTinyintType(tinyintType, builder, value);
+        ArrowPageUtils.writeTinyintType(tinyintType, builder, value);
 
         Block block = builder.build();
         long result = tinyintType.getLong(block, 0);
@@ -331,13 +331,13 @@ public class ArrowPageUtilsTest
     }
 
     @Test
-    public void testHandleBigintType()
+    public void testWriteBigintType()
     {
         Type bigintType = BigintType.BIGINT;
         BlockBuilder builder = bigintType.createBlockBuilder(null, 1);
 
         long value = 123456789L;
-        ArrowPageUtils.handleBigintType(bigintType, builder, value);
+        ArrowPageUtils.writeBigintType(bigintType, builder, value);
 
         Block block = builder.build();
         long result = bigintType.getLong(block, 0);
@@ -345,13 +345,13 @@ public class ArrowPageUtilsTest
     }
 
     @Test
-    public void testHandleIntegerType()
+    public void testWriteIntegerType()
     {
         Type integerType = IntegerType.INTEGER;
         BlockBuilder builder = integerType.createBlockBuilder(null, 1);
 
         int value = 42;
-        ArrowPageUtils.handleIntegerType(integerType, builder, value);
+        ArrowPageUtils.writeIntegerType(integerType, builder, value);
 
         Block block = builder.build();
         long result = integerType.getLong(block, 0);
@@ -359,13 +359,13 @@ public class ArrowPageUtilsTest
     }
 
     @Test
-    public void testHandleDoubleType()
+    public void testWriteDoubleType()
     {
         Type doubleType = DoubleType.DOUBLE;
         BlockBuilder builder = doubleType.createBlockBuilder(null, 1);
 
         double value = 42.42;
-        ArrowPageUtils.handleDoubleType(doubleType, builder, value);
+        ArrowPageUtils.writeDoubleType(doubleType, builder, value);
 
         Block block = builder.build();
         double result = doubleType.getDouble(block, 0);
@@ -373,13 +373,13 @@ public class ArrowPageUtilsTest
     }
 
     @Test
-    public void testHandleBooleanType()
+    public void testWriteBooleanType()
     {
         Type booleanType = BooleanType.BOOLEAN;
         BlockBuilder builder = booleanType.createBlockBuilder(null, 1);
 
         boolean value = true;
-        ArrowPageUtils.handleBooleanType(booleanType, builder, value);
+        ArrowPageUtils.writeBooleanType(booleanType, builder, value);
 
         Block block = builder.build();
         boolean result = booleanType.getBoolean(block, 0);
@@ -387,14 +387,14 @@ public class ArrowPageUtilsTest
     }
 
     @Test
-    public void testHandleArrayType()
+    public void testWriteArrayType()
     {
         Type elementType = IntegerType.INTEGER;
         ArrayType arrayType = new ArrayType(elementType);
         BlockBuilder builder = arrayType.createBlockBuilder(null, 1);
 
         List<Integer> values = Arrays.asList(1, 2, 3);
-        ArrowPageUtils.handleArrayType(arrayType, builder, values);
+        ArrowPageUtils.writeArrayType(arrayType, builder, values);
 
         Block block = builder.build();
         Block arrayBlock = arrayType.getObject(block, 0);
@@ -405,7 +405,7 @@ public class ArrowPageUtilsTest
     }
 
     @Test
-    public void testHandleRowType()
+    public void testWriteRowType()
     {
         RowType.Field field1 = new RowType.Field(Optional.of("field1"), IntegerType.INTEGER);
         RowType.Field field2 = new RowType.Field(Optional.of("field2"), VarcharType.createUnboundedVarcharType());
@@ -413,7 +413,7 @@ public class ArrowPageUtilsTest
         BlockBuilder builder = rowType.createBlockBuilder(null, 1);
 
         List<Object> rowValues = Arrays.asList(42, "test");
-        ArrowPageUtils.handleRowType(rowType, builder, rowValues);
+        ArrowPageUtils.writeRowType(rowType, builder, rowValues);
 
         Block block = builder.build();
         Block rowBlock = rowType.getObject(block, 0);
@@ -422,13 +422,13 @@ public class ArrowPageUtilsTest
     }
 
     @Test
-    public void testHandleDateType()
+    public void testWriteDateType()
     {
         Type dateType = DateType.DATE;
         BlockBuilder builder = dateType.createBlockBuilder(null, 1);
 
         LocalDate value = LocalDate.of(2020, 1, 1);
-        ArrowPageUtils.handleDateType(dateType, builder, value);
+        ArrowPageUtils.writeDateType(dateType, builder, value);
 
         Block block = builder.build();
         long result = dateType.getLong(block, 0);
@@ -436,13 +436,13 @@ public class ArrowPageUtilsTest
     }
 
     @Test
-    public void testHandleTimestampType()
+    public void testWriteTimestampType()
     {
         Type timestampType = TimestampType.TIMESTAMP;
         BlockBuilder builder = timestampType.createBlockBuilder(null, 1);
 
         long value = 1609459200000L; // Jan 1, 2021, 00:00:00 UTC
-        ArrowPageUtils.handleTimestampType(timestampType, builder, value);
+        ArrowPageUtils.writeTimestampType(timestampType, builder, value);
 
         Block block = builder.build();
         long result = timestampType.getLong(block, 0);
@@ -450,14 +450,14 @@ public class ArrowPageUtilsTest
     }
 
     @Test
-    public void testHandleTimestampTypeWithSqlTimestamp()
+    public void testWriteTimestampTypeWithSqlTimestamp()
     {
         Type timestampType = TimestampType.TIMESTAMP;
         BlockBuilder builder = timestampType.createBlockBuilder(null, 1);
 
         java.sql.Timestamp timestamp = java.sql.Timestamp.valueOf("2021-01-01 00:00:00");
         long expectedMillis = timestamp.getTime();
-        ArrowPageUtils.handleTimestampType(timestampType, builder, timestamp);
+        ArrowPageUtils.writeTimestampType(timestampType, builder, timestamp);
 
         Block block = builder.build();
         long result = timestampType.getLong(block, 0);
@@ -471,7 +471,7 @@ public class ArrowPageUtilsTest
         BlockBuilder builder = shortDecimalType.createBlockBuilder(null, 1);
 
         BigDecimal decimalValue = new BigDecimal("12345.67");
-        ArrowPageUtils.handleDecimalType(shortDecimalType, builder, decimalValue);
+        ArrowPageUtils.writeDecimalType(shortDecimalType, builder, decimalValue);
 
         Block block = builder.build();
         long unscaledValue = shortDecimalType.getLong(block, 0); // Unscaled value: 1234567
@@ -486,7 +486,7 @@ public class ArrowPageUtilsTest
         DecimalType longDecimalType = DecimalType.createDecimalType(38, 10);
         BlockBuilder builder = longDecimalType.createBlockBuilder(null, 1);
         BigDecimal decimalValue = new BigDecimal("1234567890.1234567890");
-        ArrowPageUtils.handleDecimalType(longDecimalType, builder, decimalValue);
+        ArrowPageUtils.writeDecimalType(longDecimalType, builder, decimalValue);
         // Build the block after inserting the decimal value
         Block block = builder.build();
         Slice unscaledSlice = longDecimalType.getSlice(block, 0);

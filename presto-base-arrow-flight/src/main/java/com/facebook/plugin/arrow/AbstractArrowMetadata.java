@@ -198,7 +198,7 @@ public abstract class AbstractArrowMetadata
             throw new PrestoException(
                     StandardErrorCode.INVALID_CAST_ARGUMENT,
                     "Invalid table handle: Expected an instance of ArrowTableHandle but received "
-                            + table.getClass().getSimpleName() + ". Please check the table type being used.");
+                            + table.getClass().getSimpleName() + "");
         }
 
         ArrowTableHandle tableHandle = (ArrowTableHandle) table;

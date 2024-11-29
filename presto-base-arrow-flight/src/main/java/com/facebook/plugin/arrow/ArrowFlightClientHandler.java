@@ -120,6 +120,8 @@ public abstract class ArrowFlightClientHandler
 
     public void closeRootallocator()
     {
-        allocator.close();
+        if (null != allocator) {
+            allocator.close();
+        }
     }
 }

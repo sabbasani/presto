@@ -36,7 +36,6 @@ final class ArrowMetadataUtil
 
     public static final JsonCodec<ArrowColumnHandle> COLUMN_CODEC;
     public static final JsonCodec<ArrowTableHandle> TABLE_CODEC;
-    public static final JsonCodec<ArrowOutputTableHandle> OUTPUT_TABLE_CODEC;
 
     static {
         JsonObjectMapperProvider provider = new JsonObjectMapperProvider();
@@ -44,7 +43,6 @@ final class ArrowMetadataUtil
         JsonCodecFactory codecFactory = new JsonCodecFactory(provider);
         COLUMN_CODEC = codecFactory.jsonCodec(ArrowColumnHandle.class);
         TABLE_CODEC = codecFactory.jsonCodec(ArrowTableHandle.class);
-        OUTPUT_TABLE_CODEC = codecFactory.jsonCodec(ArrowOutputTableHandle.class);
     }
 
     public static final class TestingTypeDeserializer
