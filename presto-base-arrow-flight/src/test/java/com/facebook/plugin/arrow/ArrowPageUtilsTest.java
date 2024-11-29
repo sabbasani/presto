@@ -280,9 +280,6 @@ public class ArrowPageUtilsTest
         Dictionary dictionary = new Dictionary(dictionaryVector, new DictionaryEncoding(1L, false, null));
         IntVector encodedVector = (IntVector) DictionaryEncoder.encode(rawVector, dictionary);
 
-        // Decode back to original
-        VarCharVector decodedVector = (VarCharVector) DictionaryEncoder.decode(encodedVector, dictionary);
-
         // Process the dictionary vector
         Block result = ArrowPageUtils.buildBlockFromEncodedVector(encodedVector, dictionaryVector);
 
