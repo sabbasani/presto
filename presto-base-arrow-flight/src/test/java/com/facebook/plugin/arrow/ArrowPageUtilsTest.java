@@ -281,7 +281,7 @@ public class ArrowPageUtilsTest
         IntVector encodedVector = (IntVector) DictionaryEncoder.encode(rawVector, dictionary);
 
         // Process the dictionary vector
-        Block result = ArrowPageUtils.buildBlockFromEncodedVector(encodedVector, dictionaryVector);
+        Block result = ArrowPageUtils.buildBlockFromEncodedVector(encodedVector, dictionary);
 
         // Verify the result
         assertNotNull(result, "The BlockBuilder should not be null.");

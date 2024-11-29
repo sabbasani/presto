@@ -64,7 +64,6 @@ import org.apache.arrow.vector.dictionary.Dictionary;
 import org.apache.arrow.vector.dictionary.DictionaryEncoder;
 import org.apache.arrow.vector.types.FloatingPointPrecision;
 import org.apache.arrow.vector.types.pojo.ArrowType;
-import org.apache.arrow.vector.types.pojo.DictionaryEncoding;
 import org.apache.arrow.vector.util.JsonStringArrayList;
 
 import java.math.BigDecimal;
@@ -157,18 +156,15 @@ public class ArrowPageUtils
         throw new UnsupportedOperationException("Unsupported vector type: " + vector.getClass().getSimpleName());
     }
 
-    public static Block buildBlockFromEncodedVector(FieldVector encodedVector, FieldVector dictionary)
+    public static Block buildBlockFromEncodedVector(FieldVector encodedVector, Dictionary dictionary)
     {
         // Validate inputs
         if (encodedVector == null || dictionary == null) {
             throw new IllegalArgumentException("Both encodedVector and dictionary must be non-null.");
         }
 
-        // Create a Dictionary object
-        Dictionary arrowDictionary = new Dictionary(dictionary, new DictionaryEncoding(1L, false, null));
-
         // Decode the encoded vector using the dictionary
-        ValueVector decodedVector = DictionaryEncoder.decode(encodedVector, arrowDictionary);
+        ValueVector decodedVector = DictionaryEncoder.decode(encodedVector, dictionary);
 
         // Create a BlockBuilder for the decoded vector's data type
         Type prestoType = getPrestoTypeFromArrowType(decodedVector.getField().getType());
