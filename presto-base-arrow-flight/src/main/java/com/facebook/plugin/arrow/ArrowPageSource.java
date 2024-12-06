@@ -24,6 +24,7 @@ import org.apache.arrow.flight.FlightStream;
 import org.apache.arrow.flight.Ticket;
 import org.apache.arrow.vector.FieldVector;
 import org.apache.arrow.vector.VectorSchemaRoot;
+import org.apache.arrow.vector.dictionary.Dictionary;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -121,7 +122,13 @@ public class ArrowPageSource
             FieldVector vector = vectorSchemaRoot.get().getVector(columnIndex);
             Type type = columnHandles.get(columnIndex).getColumnType();
 
-            Block block = ArrowPageUtils.buildBlockFromVector(vector, type);
+            boolean isDictionaryBlock = vector.getField().getDictionary() != null;
+            Dictionary dictionary = null;
+            if (isDictionaryBlock) {
+                dictionary = flightStream.getDictionaryProvider().lookup(vector.getField().getDictionary().getId());
+            }
+            Block block = null != dictionary ? ArrowPageUtils.buildBlockFromVector(vector, type, dictionary.getVector(), isDictionaryBlock) :
+                    ArrowPageUtils.buildBlockFromVector(vector, type, null, false);
             blocks.add(block);
         }
 

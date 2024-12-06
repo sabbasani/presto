@@ -15,6 +15,7 @@ package com.facebook.plugin.arrow;
 
 import com.facebook.presto.common.block.Block;
 import com.facebook.presto.common.block.BlockBuilder;
+import com.facebook.presto.common.block.DictionaryBlock;
 import com.facebook.presto.common.type.ArrayType;
 import com.facebook.presto.common.type.BigintType;
 import com.facebook.presto.common.type.BooleanType;
@@ -60,8 +61,6 @@ import org.apache.arrow.vector.VarBinaryVector;
 import org.apache.arrow.vector.VarCharVector;
 import org.apache.arrow.vector.complex.ListVector;
 import org.apache.arrow.vector.complex.impl.UnionListReader;
-import org.apache.arrow.vector.dictionary.Dictionary;
-import org.apache.arrow.vector.dictionary.DictionaryEncoder;
 import org.apache.arrow.vector.types.FloatingPointPrecision;
 import org.apache.arrow.vector.types.pojo.ArrowType;
 import org.apache.arrow.vector.util.JsonStringArrayList;
@@ -81,9 +80,12 @@ public class ArrowPageUtils
     {
     }
 
-    public static Block buildBlockFromVector(FieldVector vector, Type type)
+    public static Block buildBlockFromVector(FieldVector vector, Type type, FieldVector dictionary, boolean isDictionaryVector)
     {
-        if (vector instanceof BitVector) {
+        if (isDictionaryVector) {
+            return buildBlockFromDictionaryVector(vector, dictionary);
+        }
+        else if (vector instanceof BitVector) {
             return buildBlockFromBitVector((BitVector) vector, type);
         }
         else if (vector instanceof TinyIntVector) {
@@ -158,31 +160,32 @@ public class ArrowPageUtils
         throw new UnsupportedOperationException("Unsupported vector type: " + vector.getClass().getSimpleName());
     }
 
-    public static Block buildBlockFromEncodedVector(FieldVector encodedVector, Dictionary dictionary)
+    public static Block buildBlockFromDictionaryVector(FieldVector fieldVector, FieldVector dictionaryVector)
     {
         // Validate inputs
-        requireNonNull(encodedVector, "encoded vector is null");
-        requireNonNull(dictionary, "dictionary is null");
-
-        // Decode the encoded vector using the dictionary
-        ValueVector decodedVector = DictionaryEncoder.decode(encodedVector, dictionary);
+        requireNonNull(fieldVector, "encoded vector is null");
+        requireNonNull(dictionaryVector, "dictionary vector is null");
 
         // Create a BlockBuilder for the decoded vector's data type
-        Type prestoType = getPrestoTypeFromArrowType(decodedVector.getField().getType());
-        BlockBuilder builder = prestoType.createBlockBuilder(null, decodedVector.getValueCount());
+        Type prestoType = getPrestoTypeFromArrowType(dictionaryVector.getField().getType());
 
+        Block dictionaryblock = null;
         // Populate the block dynamically based on vector type
-        for (int i = 0; i < decodedVector.getValueCount(); i++) {
-            if (decodedVector.isNull(i)) {
-                builder.appendNull(); // Append null for null values
-            }
-            else {
-                // write based on vector type
-                appendValueToBlock(decodedVector, i, prestoType, builder);
+        for (int i = 0; i < dictionaryVector.getValueCount(); i++) {
+            if (!dictionaryVector.isNull(i)) {
+                dictionaryblock = appendValueToBlock(dictionaryVector, prestoType);
             }
         }
 
-        return builder.build();
+        // Get the Arrow indices vector
+        IntVector indicesVector = (IntVector) fieldVector;
+        int[] ids = new int[indicesVector.getValueCount()];
+        for (int i = 0; i < indicesVector.getValueCount(); i++) {
+            ids[i] = indicesVector.get(i);
+        }
+
+        // Create the Presto DictionaryBlock
+        return new DictionaryBlock(ids.length, dictionaryblock, ids);
     }
 
     private static Type getPrestoTypeFromArrowType(ArrowType arrowType)
@@ -225,37 +228,43 @@ public class ArrowPageUtils
         throw new UnsupportedOperationException("Unsupported ArrowType: " + arrowType);
     }
 
-    private static void appendValueToBlock(ValueVector vector, int index, Type prestoType, BlockBuilder builder)
+    private static Block appendValueToBlock(ValueVector vector, Type prestoType)
     {
         if (vector instanceof VarCharVector) {
-            VarCharVector varCharVector = (VarCharVector) vector;
-            byte[] valueBytes = varCharVector.get(index);
-            prestoType.writeSlice(builder, Slices.utf8Slice(new String(valueBytes, StandardCharsets.UTF_8)));
+            return buildBlockFromVarCharVector((VarCharVector) vector, prestoType);
         }
         else if (vector instanceof IntVector) {
-            IntVector intVector = (IntVector) vector;
-            prestoType.writeLong(builder, intVector.get(index));
+            return buildBlockFromIntVector((IntVector) vector, prestoType);
         }
         else if (vector instanceof BigIntVector) {
-            BigIntVector bigIntVector = (BigIntVector) vector;
-            prestoType.writeLong(builder, bigIntVector.get(index));
+            return buildBlockFromBigIntVector((BigIntVector) vector, prestoType);
         }
         else if (vector instanceof Float4Vector) {
-            Float4Vector floatVector = (Float4Vector) vector;
-            prestoType.writeLong(builder, Float.floatToRawIntBits(floatVector.get(index)));
+            return buildBlockFromFloat4Vector((Float4Vector) vector, prestoType);
         }
         else if (vector instanceof Float8Vector) {
-            Float8Vector doubleVector = (Float8Vector) vector;
-            prestoType.writeDouble(builder, doubleVector.get(index));
+            return buildBlockFromFloat8Vector((Float8Vector) vector, prestoType);
         }
         else if (vector instanceof BitVector) {
-            BitVector bitVector = (BitVector) vector;
-            prestoType.writeBoolean(builder, bitVector.get(index) == 1);
+            return buildBlockFromBitVector((BitVector) vector, prestoType);
         }
         else if (vector instanceof VarBinaryVector) {
-            VarBinaryVector binaryVector = (VarBinaryVector) vector;
-            byte[] valueBytes = binaryVector.get(index);
-            prestoType.writeSlice(builder, Slices.wrappedBuffer(valueBytes));
+            return buildBlockFromVarBinaryVector((VarBinaryVector) vector, prestoType);
+        }
+        else if (vector instanceof DecimalVector) {
+            return buildBlockFromDecimalVector((DecimalVector) vector, prestoType);
+        }
+        else if (vector instanceof TinyIntVector) {
+            return buildBlockFromTinyIntVector((TinyIntVector) vector, prestoType);
+        }
+        else if (vector instanceof SmallIntVector) {
+            return buildBlockFromSmallIntVector((SmallIntVector) vector, prestoType);
+        }
+        else if (vector instanceof DateDayVector) {
+            return buildBlockFromDateDayVector((DateDayVector) vector, prestoType);
+        }
+        else if (vector instanceof TimeStampMilliTZVector) {
+            return buildBlockFromTimeStampMicroVector((TimeStampMicroVector) vector, prestoType);
         }
         else {
             throw new UnsupportedOperationException("Unsupported vector type: " + vector.getClass());

@@ -15,6 +15,7 @@ package com.facebook.plugin.arrow;
 
 import com.facebook.presto.common.block.Block;
 import com.facebook.presto.common.block.BlockBuilder;
+import com.facebook.presto.common.block.DictionaryBlock;
 import com.facebook.presto.common.type.ArrayType;
 import com.facebook.presto.common.type.BigintType;
 import com.facebook.presto.common.type.BooleanType;
@@ -56,6 +57,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 
+import static com.facebook.plugin.arrow.ArrowPageUtils.buildBlockFromDictionaryVector;
 import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertNotNull;
 import static org.testng.Assert.assertTrue;
@@ -281,11 +283,61 @@ public class ArrowPageUtilsTest
         IntVector encodedVector = (IntVector) DictionaryEncoder.encode(rawVector, dictionary);
 
         // Process the dictionary vector
-        Block result = ArrowPageUtils.buildBlockFromEncodedVector(encodedVector, dictionary);
+        Block result = buildBlockFromDictionaryVector(encodedVector, dictionary.getVector());
 
         // Verify the result
         assertNotNull(result, "The BlockBuilder should not be null.");
         assertEquals(result.getPositionCount(), 50);
+    }
+
+    @Test
+    public void testBuildBlockFromDictionaryVector()
+    {
+        IntVector indicesVector = new IntVector("indices", allocator);
+        indicesVector.allocateNew(3); // allocating space for 3 values
+
+        // Initialize a dummy dictionary vector
+        // Example: dictionary contains 3 string values
+        VarCharVector dictionaryVector = new VarCharVector("dictionary", allocator);
+        dictionaryVector.allocateNew(3); // allocating 3 elements in dictionary
+
+        // Fill dictionaryVector with some values
+        dictionaryVector.set(0, "apple".getBytes());
+        dictionaryVector.set(1, "banana".getBytes());
+        dictionaryVector.set(2, "cherry".getBytes());
+        dictionaryVector.setValueCount(3);
+
+        // Set up index values (this would reference the dictionary)
+        indicesVector.set(0, 0);  // First index points to "apple"
+        indicesVector.set(1, 1);  // Second index points to "banana"
+        indicesVector.set(2, 2);  // Third index points to "cherry"
+        indicesVector.setValueCount(3);
+        // Call the method under test
+        Block block = buildBlockFromDictionaryVector(indicesVector, dictionaryVector);
+
+        // Assertions to check the dictionary block's behavior
+        assertNotNull(block);
+        assertTrue(block instanceof DictionaryBlock);
+
+        DictionaryBlock dictionaryBlock = (DictionaryBlock) block;
+
+        // Verify the dictionary block contains the right dictionary
+
+        for (int i = 0; i < dictionaryBlock.getPositionCount(); i++) {
+            // Get the slice (string value) at the given position
+            Slice slice = dictionaryBlock.getSlice(i, 0, dictionaryBlock.getSliceLength(i));
+
+            // Assert based on the expected values
+            if (i == 0) {
+                assertEquals(slice.toStringUtf8(), "apple");
+            }
+            else if (i == 1) {
+                assertEquals(slice.toStringUtf8(), "banana");
+            }
+            else if (i == 2) {
+                assertEquals(slice.toStringUtf8(), "cherry");
+            }
+        }
     }
 
     @Test
