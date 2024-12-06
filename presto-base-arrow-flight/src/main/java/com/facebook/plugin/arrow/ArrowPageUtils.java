@@ -177,15 +177,53 @@ public class ArrowPageUtils
             }
         }
 
-        // Get the Arrow indices vector
-        IntVector indicesVector = (IntVector) fieldVector;
-        int[] ids = new int[indicesVector.getValueCount()];
-        for (int i = 0; i < indicesVector.getValueCount(); i++) {
-            ids[i] = indicesVector.get(i);
-        }
+        return getDictionaryBlock(fieldVector, dictionaryblock);
 
         // Create the Presto DictionaryBlock
-        return new DictionaryBlock(ids.length, dictionaryblock, ids);
+    }
+
+    private static DictionaryBlock getDictionaryBlock(FieldVector fieldVector, Block dictionaryblock)
+    {
+        if (fieldVector instanceof IntVector) {
+            // Get the Arrow indices vector
+            IntVector indicesVector = (IntVector) fieldVector;
+            int[] ids = new int[indicesVector.getValueCount()];
+            for (int i = 0; i < indicesVector.getValueCount(); i++) {
+                ids[i] = indicesVector.get(i);
+            }
+            return new DictionaryBlock(ids.length, dictionaryblock, ids);
+        }
+        else if (fieldVector instanceof BigIntVector) {
+            // Get the BigInt indices vector
+            BigIntVector bigIntIndicesVector = (BigIntVector) fieldVector;
+            int[] ids = new int[bigIntIndicesVector.getValueCount()];
+            for (int i = 0; i < bigIntIndicesVector.getValueCount(); i++) {
+                ids[i] = (int) bigIntIndicesVector.get(i);
+            }
+            return new DictionaryBlock(ids.length, dictionaryblock, ids);
+        }
+        else if (fieldVector instanceof SmallIntVector) {
+            // Get the SmallInt indices vector
+            SmallIntVector smallIntIndicesVector = (SmallIntVector) fieldVector;
+            int[] ids = new int[smallIntIndicesVector.getValueCount()];
+            for (int i = 0; i < smallIntIndicesVector.getValueCount(); i++) {
+                ids[i] = smallIntIndicesVector.get(i);
+            }
+            return new DictionaryBlock(ids.length, dictionaryblock, ids);
+        }
+        else if (fieldVector instanceof TinyIntVector) {
+            // Get the TinyInt indices vector
+            TinyIntVector tinyIntIndicesVector = (TinyIntVector) fieldVector;
+            int[] ids = new int[tinyIntIndicesVector.getValueCount()];
+            for (int i = 0; i < tinyIntIndicesVector.getValueCount(); i++) {
+                ids[i] = tinyIntIndicesVector.get(i);
+            }
+            return new DictionaryBlock(ids.length, dictionaryblock, ids);
+        }
+        else {
+            // Handle the case where the FieldVector is of an unsupported type
+            throw new IllegalArgumentException("Unsupported FieldVector type: " + fieldVector.getClass());
+        }
     }
 
     private static Type getPrestoTypeFromArrowType(ArrowType arrowType)

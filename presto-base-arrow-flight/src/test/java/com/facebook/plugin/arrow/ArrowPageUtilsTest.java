@@ -310,8 +310,162 @@ public class ArrowPageUtilsTest
         // Set up index values (this would reference the dictionary)
         indicesVector.set(0, 0);  // First index points to "apple"
         indicesVector.set(1, 1);  // Second index points to "banana"
-        indicesVector.set(2, 2);  // Third index points to "cherry"
+        indicesVector.set(2, 2);
+        indicesVector.set(3, 2); // Third index points to "cherry"
+        indicesVector.setValueCount(4);
+        // Call the method under test
+        Block block = buildBlockFromDictionaryVector(indicesVector, dictionaryVector);
+
+        // Assertions to check the dictionary block's behavior
+        assertNotNull(block);
+        assertTrue(block instanceof DictionaryBlock);
+
+        DictionaryBlock dictionaryBlock = (DictionaryBlock) block;
+
+        // Verify the dictionary block contains the right dictionary
+
+        for (int i = 0; i < dictionaryBlock.getPositionCount(); i++) {
+            // Get the slice (string value) at the given position
+            Slice slice = dictionaryBlock.getSlice(i, 0, dictionaryBlock.getSliceLength(i));
+
+            // Assert based on the expected values
+            if (i == 0) {
+                assertEquals(slice.toStringUtf8(), "apple");
+            }
+            else if (i == 1) {
+                assertEquals(slice.toStringUtf8(), "banana");
+            }
+            else if (i == 2) {
+                assertEquals(slice.toStringUtf8(), "cherry");
+            }
+            else if (i == 3) {
+                assertEquals(slice.toStringUtf8(), "cherry");
+            }
+        }
+    }
+
+    @Test
+    public void testBuildBlockFromDictionaryVectorBigInt()
+    {
+        BigIntVector indicesVector = new BigIntVector("indices", allocator);
+
+        indicesVector.allocateNew(3); // allocating space for 3 values
+        indicesVector.set(0, 0L);
+        indicesVector.set(1, 1L);
+        indicesVector.set(2, 2L);
         indicesVector.setValueCount(3);
+
+        // Initialize a dummy dictionary vector
+        // Example: dictionary contains 3 string values
+        VarCharVector dictionaryVector = new VarCharVector("dictionary", allocator);
+        dictionaryVector.allocateNew(3); // allocating 3 elements in dictionary
+
+        // Fill dictionaryVector with some values
+        dictionaryVector.set(0, "apple".getBytes());
+        dictionaryVector.set(1, "banana".getBytes());
+        dictionaryVector.set(2, "cherry".getBytes());
+        dictionaryVector.setValueCount(3);
+
+        // Call the method under test
+        Block block = buildBlockFromDictionaryVector(indicesVector, dictionaryVector);
+
+        // Assertions to check the dictionary block's behavior
+        assertNotNull(block);
+        assertTrue(block instanceof DictionaryBlock);
+
+        DictionaryBlock dictionaryBlock = (DictionaryBlock) block;
+
+        // Verify the dictionary block contains the right dictionary
+
+        for (int i = 0; i < dictionaryBlock.getPositionCount(); i++) {
+            // Get the slice (string value) at the given position
+            Slice slice = dictionaryBlock.getSlice(i, 0, dictionaryBlock.getSliceLength(i));
+
+            // Assert based on the expected values
+            if (i == 0) {
+                assertEquals(slice.toStringUtf8(), "apple");
+            }
+            else if (i == 1) {
+                assertEquals(slice.toStringUtf8(), "banana");
+            }
+            else if (i == 2) {
+                assertEquals(slice.toStringUtf8(), "cherry");
+            }
+        }
+    }
+
+    @Test
+    public void testBuildBlockFromDictionaryVectorSmallInt()
+    {
+        SmallIntVector indicesVector = new SmallIntVector("indices", allocator);
+
+        indicesVector.allocateNew(3); // allocating space for 3 values
+        indicesVector.set(0, (short) 0);
+        indicesVector.set(1, (short) 1);
+        indicesVector.set(2, (short) 2);
+        indicesVector.setValueCount(3);
+
+        // Initialize a dummy dictionary vector
+        // Example: dictionary contains 3 string values
+        VarCharVector dictionaryVector = new VarCharVector("dictionary", allocator);
+        dictionaryVector.allocateNew(3); // allocating 3 elements in dictionary
+
+        // Fill dictionaryVector with some values
+        dictionaryVector.set(0, "apple".getBytes());
+        dictionaryVector.set(1, "banana".getBytes());
+        dictionaryVector.set(2, "cherry".getBytes());
+        dictionaryVector.setValueCount(3);
+
+        // Call the method under test
+        Block block = buildBlockFromDictionaryVector(indicesVector, dictionaryVector);
+
+        // Assertions to check the dictionary block's behavior
+        assertNotNull(block);
+        assertTrue(block instanceof DictionaryBlock);
+
+        DictionaryBlock dictionaryBlock = (DictionaryBlock) block;
+
+        // Verify the dictionary block contains the right dictionary
+
+        for (int i = 0; i < dictionaryBlock.getPositionCount(); i++) {
+            // Get the slice (string value) at the given position
+            Slice slice = dictionaryBlock.getSlice(i, 0, dictionaryBlock.getSliceLength(i));
+
+            // Assert based on the expected values
+            if (i == 0) {
+                assertEquals(slice.toStringUtf8(), "apple");
+            }
+            else if (i == 1) {
+                assertEquals(slice.toStringUtf8(), "banana");
+            }
+            else if (i == 2) {
+                assertEquals(slice.toStringUtf8(), "cherry");
+            }
+        }
+    }
+
+    @Test
+    public void testBuildBlockFromDictionaryVectorTinyInt()
+    {
+        TinyIntVector indicesVector = new TinyIntVector("indices", allocator);
+
+        indicesVector.allocateNew(3); // allocating space for 3 values
+        indicesVector.set(0, (byte) 0);
+        indicesVector.set(1, (byte) 1);
+        indicesVector.set(2, (byte) 2);
+        indicesVector.setValueCount(3);
+
+        // Initialize a dummy dictionary vector
+        // Example: dictionary contains 3 string values
+        VarCharVector dictionaryVector = new VarCharVector("dictionary", allocator);
+        dictionaryVector.allocateNew(3); // allocating 3 elements in dictionary
+
+        // Fill dictionaryVector with some values
+        dictionaryVector.set(0, "apple".getBytes());
+        dictionaryVector.set(1, "banana".getBytes());
+        dictionaryVector.set(2, "cherry".getBytes());
+        dictionaryVector.setValueCount(3);
+
         // Call the method under test
         Block block = buildBlockFromDictionaryVector(indicesVector, dictionaryVector);
 
