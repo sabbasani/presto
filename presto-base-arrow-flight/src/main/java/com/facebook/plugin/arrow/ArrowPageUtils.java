@@ -193,15 +193,6 @@ public class ArrowPageUtils
             }
             return new DictionaryBlock(ids.length, dictionaryblock, ids);
         }
-        else if (fieldVector instanceof BigIntVector) {
-            // Get the BigInt indices vector
-            BigIntVector bigIntIndicesVector = (BigIntVector) fieldVector;
-            int[] ids = new int[bigIntIndicesVector.getValueCount()];
-            for (int i = 0; i < bigIntIndicesVector.getValueCount(); i++) {
-                ids[i] = (int) bigIntIndicesVector.get(i);
-            }
-            return new DictionaryBlock(ids.length, dictionaryblock, ids);
-        }
         else if (fieldVector instanceof SmallIntVector) {
             // Get the SmallInt indices vector
             SmallIntVector smallIntIndicesVector = (SmallIntVector) fieldVector;

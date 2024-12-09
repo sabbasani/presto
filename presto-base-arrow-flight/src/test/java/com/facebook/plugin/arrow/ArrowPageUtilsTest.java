@@ -33,6 +33,7 @@ import com.facebook.presto.common.type.VarcharType;
 import io.airlift.slice.Slice;
 import org.apache.arrow.memory.BufferAllocator;
 import org.apache.arrow.memory.RootAllocator;
+import org.apache.arrow.vector.BaseIntVector;
 import org.apache.arrow.vector.BigIntVector;
 import org.apache.arrow.vector.BitVector;
 import org.apache.arrow.vector.DecimalVector;
@@ -280,7 +281,7 @@ public class ArrowPageUtilsTest
 
         // Encode using dictionary
         Dictionary dictionary = new Dictionary(dictionaryVector, new DictionaryEncoding(1L, false, null));
-        IntVector encodedVector = (IntVector) DictionaryEncoder.encode(rawVector, dictionary);
+        BaseIntVector encodedVector = (BaseIntVector) DictionaryEncoder.encode(rawVector, dictionary);
 
         // Process the dictionary vector
         Block result = buildBlockFromDictionaryVector(encodedVector, dictionary.getVector());
