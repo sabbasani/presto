@@ -281,7 +281,7 @@ public class ArrowPageUtilsTest
         rawVector.setValueCount(VECTOR_LENGTH);
 
         // Encode using dictionary
-        ArrowType.Int index = new ArrowType.Int(16,true);
+        ArrowType.Int index = new ArrowType.Int(16, true);
         Dictionary dictionary = new Dictionary(dictionaryVector, new DictionaryEncoding(1L, false, index));
         BaseIntVector encodedVector = (BaseIntVector) DictionaryEncoder.encode(rawVector, dictionary);
 
