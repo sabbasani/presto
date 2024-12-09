@@ -84,11 +84,16 @@ import org.apache.iceberg.RowLevelOperationMode;
 import org.apache.iceberg.Schema;
 import org.apache.iceberg.SchemaParser;
 import org.apache.iceberg.Table;
+import org.apache.iceberg.TableProperties;
 import org.apache.iceberg.Transaction;
+import org.apache.iceberg.UpdateProperties;
+import org.apache.iceberg.exceptions.NoSuchTableException;
+import org.apache.iceberg.exceptions.NoSuchViewException;
 import org.apache.iceberg.types.Type;
 import org.apache.iceberg.types.TypeUtil;
 import org.apache.iceberg.types.Types;
 import org.apache.iceberg.util.CharSequenceSet;
+import org.apache.iceberg.view.View;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -120,6 +125,7 @@ import static com.facebook.presto.iceberg.IcebergMetadataColumn.FILE_PATH;
 import static com.facebook.presto.iceberg.IcebergPartitionType.ALL;
 import static com.facebook.presto.iceberg.IcebergSessionProperties.getCompressionCodec;
 import static com.facebook.presto.iceberg.IcebergSessionProperties.isPushdownFilterEnabled;
+import static com.facebook.presto.iceberg.IcebergTableProperties.COMMIT_RETRIES;
 import static com.facebook.presto.iceberg.IcebergTableProperties.DELETE_MODE;
 import static com.facebook.presto.iceberg.IcebergTableProperties.FILE_FORMAT_PROPERTY;
 import static com.facebook.presto.iceberg.IcebergTableProperties.FORMAT_VERSION;
@@ -141,6 +147,7 @@ import static com.facebook.presto.iceberg.IcebergUtil.getPartitionSpecsIncluding
 import static com.facebook.presto.iceberg.IcebergUtil.getPartitions;
 import static com.facebook.presto.iceberg.IcebergUtil.getSnapshotIdTimeOperator;
 import static com.facebook.presto.iceberg.IcebergUtil.getTableComment;
+import static com.facebook.presto.iceberg.IcebergUtil.getViewComment;
 import static com.facebook.presto.iceberg.IcebergUtil.resolveSnapshotIdByName;
 import static com.facebook.presto.iceberg.IcebergUtil.toHiveColumns;
 import static com.facebook.presto.iceberg.IcebergUtil.tryGetLocation;
@@ -216,6 +223,8 @@ public abstract class IcebergAbstractMetadata
     }
 
     protected abstract Table getRawIcebergTable(ConnectorSession session, SchemaTableName schemaTableName);
+
+    protected abstract View getIcebergView(ConnectorSession session, SchemaTableName schemaTableName);
 
     protected abstract boolean tableExists(ConnectorSession session, SchemaTableName schemaTableName);
 
@@ -386,22 +395,37 @@ public abstract class IcebergAbstractMetadata
     public ConnectorTableMetadata getTableMetadata(ConnectorSession session, ConnectorTableHandle table)
     {
         IcebergTableHandle icebergTableHandle = (IcebergTableHandle) table;
-        return getTableMetadata(session, icebergTableHandle.getSchemaTableName(), icebergTableHandle.getIcebergTableName());
+        return getTableOrViewMetadata(session, icebergTableHandle.getSchemaTableName(), icebergTableHandle.getIcebergTableName());
     }
 
-    protected ConnectorTableMetadata getTableMetadata(ConnectorSession session, SchemaTableName table, IcebergTableName icebergTableName)
+    protected ConnectorTableMetadata getTableOrViewMetadata(ConnectorSession session, SchemaTableName table, IcebergTableName icebergTableName)
     {
-        Table icebergTable = getIcebergTable(session, new SchemaTableName(table.getSchemaName(), icebergTableName.getTableName()));
-        ImmutableList.Builder<ColumnMetadata> columns = ImmutableList.builder();
-        columns.addAll(getColumnMetadatas(icebergTable));
-        if (icebergTableName.getTableType() == CHANGELOG) {
-            return ChangelogUtil.getChangelogTableMeta(table, typeManager, columns.build());
+        SchemaTableName schemaTableName = new SchemaTableName(table.getSchemaName(), icebergTableName.getTableName());
+        try {
+            Table icebergTable = getIcebergTable(session, schemaTableName);
+            ImmutableList.Builder<ColumnMetadata> columns = ImmutableList.builder();
+            columns.addAll(getColumnMetadata(icebergTable));
+            if (icebergTableName.getTableType() == CHANGELOG) {
+                return ChangelogUtil.getChangelogTableMeta(table, typeManager, columns.build());
+            }
+            else {
+                columns.add(PATH_COLUMN_METADATA);
+                columns.add(DATA_SEQUENCE_NUMBER_COLUMN_METADATA);
+            }
+            return new ConnectorTableMetadata(table, columns.build(), createMetadataProperties(icebergTable), getTableComment(icebergTable));
         }
-        else {
-            columns.add(PATH_COLUMN_METADATA);
-            columns.add(DATA_SEQUENCE_NUMBER_COLUMN_METADATA);
+        catch (NoSuchTableException noSuchTableException) {
+            // Considering that the Iceberg library does not provide an efficient way to determine whether
+            //  it's a view or a table without loading it, we first try to load it as a table directly, and then
+            //  try to load it as a view when getting an `NoSuchTableException`. This will be more efficient.
+            try {
+                View icebergView = getIcebergView(session, schemaTableName);
+                return new ConnectorTableMetadata(table, getColumnMetadata(icebergView), createViewMetadataProperties(icebergView), getViewComment(icebergView));
+            }
+            catch (NoSuchViewException noSuchViewException) {
+                throw new TableNotFoundException(schemaTableName);
+            }
         }
-        return new ConnectorTableMetadata(table, columns.build(), createMetadataProperties(icebergTable), getTableComment(icebergTable));
     }
 
     @Override
@@ -414,7 +438,7 @@ public abstract class IcebergAbstractMetadata
             try {
                 IcebergTableName tableName = IcebergTableName.from(table.getTableName());
                 if (!tableName.isSystemTable()) {
-                    columns.put(table, getTableMetadata(session, table, tableName).getColumns());
+                    columns.put(table, getTableOrViewMetadata(session, table, tableName).getColumns());
                 }
             }
             catch (TableNotFoundException e) {
@@ -449,7 +473,7 @@ public abstract class IcebergAbstractMetadata
     @Override
     public Optional<ConnectorOutputMetadata> finishCreateTable(ConnectorSession session, ConnectorOutputTableHandle tableHandle, Collection<Slice> fragments, Collection<ComputedStatistics> computedStatistics)
     {
-        return finishWrite(session, (IcebergOutputTableHandle) tableHandle, fragments, computedStatistics);
+        return finishWrite((IcebergOutputTableHandle) tableHandle, fragments);
     }
 
     protected ConnectorInsertTableHandle beginIcebergTableInsert(ConnectorSession session, IcebergTableHandle table, Table icebergTable)
@@ -471,10 +495,10 @@ public abstract class IcebergAbstractMetadata
     @Override
     public Optional<ConnectorOutputMetadata> finishInsert(ConnectorSession session, ConnectorInsertTableHandle insertHandle, Collection<Slice> fragments, Collection<ComputedStatistics> computedStatistics)
     {
-        return finishWrite(session, (IcebergInsertTableHandle) insertHandle, fragments, computedStatistics);
+        return finishWrite((IcebergInsertTableHandle) insertHandle, fragments);
     }
 
-    private Optional<ConnectorOutputMetadata> finishWrite(ConnectorSession session, IcebergWritableTableHandle writableTableHandle, Collection<Slice> fragments, Collection<ComputedStatistics> computedStatistics)
+    private Optional<ConnectorOutputMetadata> finishWrite(IcebergWritableTableHandle writableTableHandle, Collection<Slice> fragments)
     {
         if (fragments.isEmpty()) {
             transaction.commitTransaction();
@@ -529,7 +553,7 @@ public abstract class IcebergAbstractMetadata
         return !isPushdownFilterEnabled(session);
     }
 
-    protected List<ColumnMetadata> getColumnMetadatas(Table table)
+    protected List<ColumnMetadata> getColumnMetadata(Table table)
     {
         Map<String, List<String>> partitionFields = getPartitionFields(table.spec(), ALL);
         return table.schema().columns().stream()
@@ -542,6 +566,18 @@ public abstract class IcebergAbstractMetadata
                                 partitionFields.containsKey(column.name()) ?
                                         columnExtraInfo(partitionFields.get(column.name())) :
                                         null))
+                        .build())
+                .collect(toImmutableList());
+    }
+
+    protected List<ColumnMetadata> getColumnMetadata(View view)
+    {
+        return view.schema().columns().stream()
+                .map(column -> ColumnMetadata.builder()
+                        .setName(column.name())
+                        .setType(toPrestoType(column.type(), typeManager))
+                        .setComment(Optional.ofNullable(column.doc()))
+                        .setHidden(false)
                         .build())
                 .collect(toImmutableList());
     }
@@ -576,6 +612,16 @@ public abstract class IcebergAbstractMetadata
         properties.put(METADATA_DELETE_AFTER_COMMIT, IcebergUtil.isMetadataDeleteAfterCommit(icebergTable));
         properties.put(METRICS_MAX_INFERRED_COLUMN, IcebergUtil.getMetricsMaxInferredColumn(icebergTable));
 
+        return properties.build();
+    }
+
+    protected ImmutableMap<String, Object> createViewMetadataProperties(View view)
+    {
+        ImmutableMap.Builder<String, Object> properties = ImmutableMap.builder();
+        if (view.properties() != null) {
+            view.properties().entrySet().stream()
+                    .forEach(entry -> properties.put(entry.getKey(), entry.getValue()));
+        }
         return properties.build();
     }
 
@@ -629,7 +675,7 @@ public abstract class IcebergAbstractMetadata
     {
         IcebergTableHandle icebergTableHandle = (IcebergTableHandle) tableHandle;
         Table icebergTable = getIcebergTable(session, icebergTableHandle.getSchemaTableName());
-        TableStatisticsMaker.writeTableStatistics(nodeVersion, typeManager, icebergTableHandle, icebergTable, session, computedStatistics);
+        TableStatisticsMaker.writeTableStatistics(nodeVersion, icebergTableHandle, icebergTable, session, computedStatistics);
     }
 
     public void rollback()
@@ -719,7 +765,7 @@ public abstract class IcebergAbstractMetadata
         Table icebergTable = getIcebergTable(session, table.getSchemaTableName());
         Schema schema;
         if (table.getIcebergTableName().getTableType() == CHANGELOG) {
-            schema = ChangelogUtil.changelogTableSchema(getRowTypeFromColumnMeta(getColumnMetadatas(icebergTable)));
+            schema = ChangelogUtil.changelogTableSchema(getRowTypeFromColumnMeta(getColumnMetadata(icebergTable)));
         }
         else {
             schema = icebergTable.schema();
@@ -952,6 +998,28 @@ public abstract class IcebergAbstractMetadata
 
         TupleDomain<IcebergColumnHandle> domainPredicate = layoutHandle.getValidPredicate();
         return removeScanFiles(icebergTable, domainPredicate);
+    }
+
+    @Override
+    public void setTableProperties(ConnectorSession session, ConnectorTableHandle tableHandle, Map<String, Object> properties)
+    {
+        IcebergTableHandle handle = (IcebergTableHandle) tableHandle;
+        Table icebergTable = getIcebergTable(session, handle.getSchemaTableName());
+        transaction = icebergTable.newTransaction();
+
+        UpdateProperties updateProperties = transaction.updateProperties();
+        for (Map.Entry<String, Object> entry : properties.entrySet()) {
+            switch (entry.getKey()) {
+                case COMMIT_RETRIES:
+                    updateProperties.set(TableProperties.COMMIT_NUM_RETRIES, String.valueOf(entry.getValue()));
+                    break;
+                default:
+                    throw new PrestoException(NOT_SUPPORTED, "Updating property " + entry.getKey() + " is not supported currently");
+            }
+        }
+
+        updateProperties.commit();
+        transaction.commitTransaction();
     }
 
     /**

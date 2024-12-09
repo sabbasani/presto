@@ -77,6 +77,11 @@ class SessionProperties {
   static constexpr const char* kExprEvalSimplified =
       "native_simplified_expression_evaluation_enabled";
 
+  /// Reduce() function will throw an error if it encounters an array of size
+  /// greater than this value.
+  static constexpr const char* kExprMaxArraySizeInReduce =
+      "native_expression_max_array_size_in_reduce";
+
   /// The maximum memory used by partial aggregation when data reduction is not
   /// optimal.
   static constexpr const char* kMaxPartialAggregationMemory =
@@ -126,12 +131,14 @@ class SessionProperties {
   static constexpr const char* kWriterSpillEnabled =
       "native_writer_spill_enabled";
 
-  /// The number of bits (N) used to calculate the spilling
-  /// partition number for hash join and RowNumber: 2 ^ N
-  static constexpr const char* kJoinSpillPartitionBits =
-      "native_join_spiller_partition_bits";
+  /// Minimum memory footprint size required to reclaim memory from a file
+  /// writer by flushing its buffered data to disk.
+  static constexpr const char* kWriterFlushThresholdBytes =
+      "native_writer_flush_threshold_bytes";
 
-  static constexpr const char* kNativeSpillerNumPartitionBits =
+  /// The number of bits (N) used to calculate the spilling partition number for
+  /// hash join and RowNumber: 2 ^ N
+  static constexpr const char* kSpillerNumPartitionBits =
       "native_spiller_num_partition_bits";
 
   /// Enable topN row number spilling on native engine.
@@ -178,6 +185,68 @@ class SessionProperties {
   /// can continuously run without yielding.
   static constexpr const char* kDriverCpuTimeSliceLimitMs =
       "driver_cpu_time_slice_limit_ms";
+
+  /// Enables query tracing.
+  static constexpr const char* kQueryTraceEnabled =
+      "native_query_trace_enabled";
+
+  /// Base dir of a query to store tracing data.
+  static constexpr const char* kQueryTraceDir = "native_query_trace_dir";
+
+  /// A comma-separated list of plan node ids whose input data will be traced.
+  /// Empty string if only want to trace the query metadata.
+  static constexpr const char* kQueryTraceNodeIds =
+      "native_query_trace_node_ids";
+
+  /// The max trace bytes limit. Tracing is disabled if zero.
+  static constexpr const char* kQueryTraceMaxBytes =
+      "native_query_trace_max_bytes";
+
+  /// The regexp of traced task id. We only enable trace on a task if its id
+  /// matches.
+  static constexpr const char* kQueryTraceTaskRegExp =
+      "native_query_trace_task_reg_exp";
+
+  /// Config used to create operator trace directory. This config is provided to
+  /// underlying file system and the config is free form. The form should be
+  /// defined by the underlying file system.
+  static constexpr const char* kOpTraceDirectoryCreateConfig =
+      "native_op_trace_directory_create_config";
+
+  /// The maximum size in bytes for the task's buffered output. The buffer is
+  /// shared among all drivers.
+  static constexpr const char* kMaxOutputBufferSize =
+      "native_max_output_buffer_size";
+
+  /// The maximum bytes to buffer per PartitionedOutput operator to avoid
+  /// creating tiny SerializedPages. For
+  /// PartitionedOutputNode::Kind::kPartitioned, PartitionedOutput operator
+  /// would buffer up to that number of bytes / number of destinations for each
+  /// destination before producing a SerializedPage.
+  static constexpr const char* kMaxPartitionedOutputBufferSize =
+      "native_max_page_partitioning_buffer_size";
+
+  /// Maximum number of partitions created by a local exchange.
+  /// Affects concurrency for pipelines containing LocalPartitionNode.
+  static constexpr const char* kMaxLocalExchangePartitionCount =
+      "native_max_local_exchange_partition_count";
+
+  /// Enable the prefix sort or fallback to std::sort in spill. The prefix sort
+  /// is faster than std::sort but requires the memory to build normalized
+  /// prefix keys, which might have potential risk of running out of server
+  /// memory.
+  static constexpr const char* kSpillPrefixSortEnabled =
+      "spill_prefixsort_enabled";
+
+  /// Maximum number of bytes to use for the normalized key in prefix-sort. Use
+  /// 0 to disable prefix-sort.
+  static constexpr const char* kPrefixSortNormalizedKeyMaxBytes =
+      "native_prefixsort_normalized_key_max_bytes";
+
+  /// Minimum number of rows to use prefix-sort. The default value (130) has
+  /// been derived using micro-benchmarking.
+  static constexpr const char* kPrefixSortMinRows =
+      "native_prefixsort_min_rows";
 
   SessionProperties();
 

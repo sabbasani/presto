@@ -40,15 +40,15 @@ namespace {
 
 protocol::TaskState toPrestoTaskState(exec::TaskState state) {
   switch (state) {
-    case exec::kRunning:
+    case exec::TaskState::kRunning:
       return protocol::TaskState::RUNNING;
-    case exec::kFinished:
+    case exec::TaskState::kFinished:
       return protocol::TaskState::FINISHED;
-    case exec::kCanceled:
+    case exec::TaskState::kCanceled:
       return protocol::TaskState::CANCELED;
-    case exec::kFailed:
+    case exec::TaskState::kFailed:
       return protocol::TaskState::FAILED;
-    case exec::kAborted:
+    case exec::TaskState::kAborted:
       [[fallthrough]];
     default:
       return protocol::TaskState::ABORTED;
@@ -698,6 +698,11 @@ void PrestoTask::updateExecutionInfoLocked(
           protocol::DataSize(veloxOp.outputBytes, protocol::DataUnit::BYTE);
 
       setTiming(
+          veloxOp.isBlockedTiming,
+          prestoOp.isBlockedCalls,
+          prestoOp.isBlockedWall,
+          prestoOp.isBlockedCpu);
+      setTiming(
           veloxOp.addInputTiming,
           prestoOp.addInputCalls,
           prestoOp.addInputWall,
@@ -776,10 +781,12 @@ void PrestoTask::updateExecutionInfoLocked(
         addSpillingOperatorMetrics(operatorStatsCollector);
       }
 
-      auto wallNanos = veloxOp.addInputTiming.wallNanos +
-          veloxOp.getOutputTiming.wallNanos + veloxOp.finishTiming.wallNanos;
-      auto cpuNanos = veloxOp.addInputTiming.cpuNanos +
-          veloxOp.getOutputTiming.cpuNanos + veloxOp.finishTiming.cpuNanos;
+      auto wallNanos = veloxOp.isBlockedTiming.wallNanos +
+          veloxOp.addInputTiming.wallNanos + veloxOp.getOutputTiming.wallNanos +
+          veloxOp.finishTiming.wallNanos;
+      auto cpuNanos = veloxOp.isBlockedTiming.cpuNanos +
+          veloxOp.addInputTiming.cpuNanos + veloxOp.getOutputTiming.cpuNanos +
+          veloxOp.finishTiming.cpuNanos;
 
       prestoPipeline.totalScheduledTimeInNanos += wallNanos;
       prestoPipeline.totalCpuTimeInNanos += cpuNanos;

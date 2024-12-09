@@ -64,7 +64,6 @@ public final class IcebergQueryRunner
 
     public static final String ICEBERG_CATALOG = "iceberg";
     public static final String TEST_DATA_DIRECTORY = "iceberg_data";
-    public static final String TEST_CATALOG_DIRECTORY = "catalog";
     public static final MetastoreContext METASTORE_CONTEXT = new MetastoreContext("test_user", "test_queryId", Optional.empty(), Collections.emptySet(), Optional.empty(), Optional.empty(), false, HiveColumnConverterProvider.DEFAULT_COLUMN_CONVERTER_PROVIDER, WarningCollector.NOOP, new RuntimeStats());
 
     private IcebergQueryRunner() {}
@@ -147,7 +146,7 @@ public final class IcebergQueryRunner
             Optional<Path> dataDirectory)
             throws Exception
     {
-        return createIcebergQueryRunner(extraProperties, extraConnectorProperties, format, createTpchTables, addJmxPlugin, nodeCount, externalWorkerLauncher, dataDirectory, false);
+        return createIcebergQueryRunner(extraProperties, extraConnectorProperties, format, createTpchTables, addJmxPlugin, nodeCount, externalWorkerLauncher, dataDirectory, false, Optional.empty());
     }
 
     public static DistributedQueryRunner createIcebergQueryRunner(
@@ -162,11 +161,27 @@ public final class IcebergQueryRunner
             boolean addStorageFormatToPath)
             throws Exception
     {
+        return createIcebergQueryRunner(extraProperties, extraConnectorProperties, format, createTpchTables, addJmxPlugin, nodeCount, externalWorkerLauncher, dataDirectory, addStorageFormatToPath, Optional.empty());
+    }
+
+    public static DistributedQueryRunner createIcebergQueryRunner(
+            Map<String, String> extraProperties,
+            Map<String, String> extraConnectorProperties,
+            FileFormat format,
+            boolean createTpchTables,
+            boolean addJmxPlugin,
+            OptionalInt nodeCount,
+            Optional<BiFunction<Integer, URI, Process>> externalWorkerLauncher,
+            Optional<Path> dataDirectory,
+            boolean addStorageFormatToPath,
+            Optional<String> schemaName)
+            throws Exception
+    {
         setupLogging();
 
         Session session = testSessionBuilder()
                 .setCatalog(ICEBERG_CATALOG)
-                .setSchema("tpch")
+                .setSchema(schemaName.orElse("tpch"))
                 .build();
 
         DistributedQueryRunner queryRunner = DistributedQueryRunner.builder(session)

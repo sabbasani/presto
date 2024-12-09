@@ -36,4 +36,22 @@ public class TestingInteractionProperties
         this.schema = schema;
         this.table = table;
     }
+
+    // Getters (no setters as the fields are final and immutable)
+    public String getSelectStatement()
+    {
+        return selectStatement;
+    }
+
+    public String getSchema()
+    {
+        return schema;
+    }
+
+    public String getTable()
+    {
+        return table;
+    }
+
+    // No setters as the class is immutable
 }

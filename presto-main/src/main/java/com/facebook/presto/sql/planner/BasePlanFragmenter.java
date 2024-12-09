@@ -34,7 +34,9 @@ import com.facebook.presto.spi.plan.PlanNode;
 import com.facebook.presto.spi.plan.PlanNodeId;
 import com.facebook.presto.spi.plan.PlanNodeIdAllocator;
 import com.facebook.presto.spi.plan.StageExecutionDescriptor;
+import com.facebook.presto.spi.plan.TableFinishNode;
 import com.facebook.presto.spi.plan.TableScanNode;
+import com.facebook.presto.spi.plan.TableWriterNode;
 import com.facebook.presto.spi.plan.ValuesNode;
 import com.facebook.presto.spi.relation.RowExpression;
 import com.facebook.presto.spi.relation.VariableReferenceExpression;
@@ -45,8 +47,6 @@ import com.facebook.presto.sql.planner.plan.RemoteSourceNode;
 import com.facebook.presto.sql.planner.plan.SequenceNode;
 import com.facebook.presto.sql.planner.plan.SimplePlanRewriter;
 import com.facebook.presto.sql.planner.plan.StatisticsWriterNode;
-import com.facebook.presto.sql.planner.plan.TableFinishNode;
-import com.facebook.presto.sql.planner.plan.TableWriterNode;
 import com.facebook.presto.sql.planner.sanity.PlanChecker;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
@@ -255,9 +255,6 @@ public abstract class BasePlanFragmenter
         if (node.getTablePartitioningScheme().isPresent()) {
             context.get().setDistribution(node.getTablePartitioningScheme().get().getPartitioning().getHandle(), metadata, session);
         }
-        if (node.getPreferredShufflePartitioningScheme().isPresent()) {
-            context.get().setDistribution(node.getPreferredShufflePartitioningScheme().get().getPartitioning().getHandle(), metadata, session);
-        }
         return context.defaultRewrite(node, context.get());
     }
 
@@ -305,7 +302,16 @@ public abstract class BasePlanFragmenter
                 .map(PlanFragment::getId)
                 .collect(toImmutableList());
 
-        return new RemoteSourceNode(exchange.getSourceLocation(), exchange.getId(), exchange.getStatsEquivalentPlanNode(), childrenIds, exchange.getOutputVariables(), exchange.isEnsureSourceOrdering(), exchange.getOrderingScheme(), exchange.getType());
+        return new RemoteSourceNode(
+                exchange.getSourceLocation(),
+                exchange.getId(),
+                exchange.getStatsEquivalentPlanNode(),
+                childrenIds,
+                exchange.getOutputVariables(),
+                exchange.isEnsureSourceOrdering(),
+                exchange.getOrderingScheme(),
+                exchange.getType(),
+                exchange.getPartitioningScheme().getEncoding());
     }
 
     protected void setDistributionForExchange(ExchangeNode.Type exchangeType, PartitioningScheme partitioningScheme, RewriteContext<FragmentProperties> context)

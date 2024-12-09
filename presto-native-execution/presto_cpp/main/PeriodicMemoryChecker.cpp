@@ -209,6 +209,22 @@ void PeriodicMemoryChecker::pushbackMemory() {
   }
   RECORD_HISTOGRAM_METRIC_VALUE(
       kCounterMemoryPushbackLatencyMs, latencyUs / 1000);
-  LOG(INFO) << "Shrunk " << velox::succinctBytes(freedBytes);
+  const auto actualFreedBytes = std::max<int64_t>(
+      0, static_cast<int64_t>(currentMemBytes) - systemUsedMemoryBytes());
+  RECORD_HISTOGRAM_METRIC_VALUE(
+      kCounterMemoryPushbackExpectedReductionBytes, freedBytes);
+  RECORD_HISTOGRAM_METRIC_VALUE(
+      kCounterMemoryPushbackReductionBytes, actualFreedBytes);
+  LOG(INFO) << "Memory pushback shrunk " << velox::succinctBytes(freedBytes)
+            << " Effective bytes shrunk: "
+            << velox::succinctBytes(actualFreedBytes);
 }
+
+#ifndef PRESTO_MEMORY_CHECKER_TYPE
+// Initialize singleton for the checker to be nullptr if
+// PRESTO_MEMORY_CHECKER_TYPE is not defined.
+folly::Singleton<facebook::presto::PeriodicMemoryChecker> checker([]() {
+  return nullptr;
+});
+#endif
 } // namespace facebook::presto

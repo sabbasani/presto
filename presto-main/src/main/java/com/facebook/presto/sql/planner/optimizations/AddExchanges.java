@@ -28,10 +28,12 @@ import com.facebook.presto.spi.WarningCollector;
 import com.facebook.presto.spi.connector.ConnectorNodePartitioningProvider;
 import com.facebook.presto.spi.plan.AggregationNode;
 import com.facebook.presto.spi.plan.Assignments;
+import com.facebook.presto.spi.plan.DeleteNode;
 import com.facebook.presto.spi.plan.DistinctLimitNode;
 import com.facebook.presto.spi.plan.EquiJoinClause;
 import com.facebook.presto.spi.plan.FilterNode;
 import com.facebook.presto.spi.plan.JoinDistributionType;
+import com.facebook.presto.spi.plan.JoinNode;
 import com.facebook.presto.spi.plan.LimitNode;
 import com.facebook.presto.spi.plan.MarkDistinctNode;
 import com.facebook.presto.spi.plan.OutputNode;
@@ -41,11 +43,16 @@ import com.facebook.presto.spi.plan.PartitioningScheme;
 import com.facebook.presto.spi.plan.PlanNode;
 import com.facebook.presto.spi.plan.PlanNodeIdAllocator;
 import com.facebook.presto.spi.plan.ProjectNode;
+import com.facebook.presto.spi.plan.SemiJoinNode;
 import com.facebook.presto.spi.plan.SortNode;
+import com.facebook.presto.spi.plan.SpatialJoinNode;
+import com.facebook.presto.spi.plan.TableFinishNode;
 import com.facebook.presto.spi.plan.TableScanNode;
+import com.facebook.presto.spi.plan.TableWriterNode;
 import com.facebook.presto.spi.plan.TopNNode;
 import com.facebook.presto.spi.plan.UnionNode;
 import com.facebook.presto.spi.plan.ValuesNode;
+import com.facebook.presto.spi.plan.WindowNode;
 import com.facebook.presto.spi.relation.RowExpression;
 import com.facebook.presto.spi.relation.VariableReferenceExpression;
 import com.facebook.presto.sql.analyzer.FeaturesConfig.AggregationPartitioningMergingStrategy;
@@ -63,18 +70,12 @@ import com.facebook.presto.sql.planner.plan.GroupIdNode;
 import com.facebook.presto.sql.planner.plan.IndexJoinNode;
 import com.facebook.presto.sql.planner.plan.IndexSourceNode;
 import com.facebook.presto.sql.planner.plan.InternalPlanVisitor;
-import com.facebook.presto.sql.planner.plan.JoinNode;
 import com.facebook.presto.sql.planner.plan.LateralJoinNode;
 import com.facebook.presto.sql.planner.plan.RowNumberNode;
-import com.facebook.presto.sql.planner.plan.SemiJoinNode;
 import com.facebook.presto.sql.planner.plan.SequenceNode;
-import com.facebook.presto.sql.planner.plan.SpatialJoinNode;
 import com.facebook.presto.sql.planner.plan.StatisticsWriterNode;
-import com.facebook.presto.sql.planner.plan.TableFinishNode;
-import com.facebook.presto.sql.planner.plan.TableWriterNode;
 import com.facebook.presto.sql.planner.plan.TopNRowNumberNode;
 import com.facebook.presto.sql.planner.plan.UnnestNode;
-import com.facebook.presto.sql.planner.plan.WindowNode;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
@@ -120,6 +121,7 @@ import static com.facebook.presto.SystemSessionProperties.preferStreamingOperato
 import static com.facebook.presto.expressions.LogicalRowExpressions.TRUE_CONSTANT;
 import static com.facebook.presto.operator.aggregation.AggregationUtils.hasSingleNodeExecutionPreference;
 import static com.facebook.presto.spi.StandardErrorCode.NOT_SUPPORTED;
+import static com.facebook.presto.spi.plan.ExchangeEncoding.COLUMNAR;
 import static com.facebook.presto.spi.plan.LimitNode.Step.PARTIAL;
 import static com.facebook.presto.sql.planner.FragmentTableScanCounter.getNumberOfTableScans;
 import static com.facebook.presto.sql.planner.FragmentTableScanCounter.hasMultipleTableScans;
@@ -528,7 +530,82 @@ public class AddExchanges
         }
 
         @Override
+        public PlanWithProperties visitDelete(DeleteNode node, PreferredProperties preferredProperties)
+        {
+            if (!node.getInputDistribution().isPresent()) {
+                return visitPlan(node, preferredProperties);
+            }
+            DeleteNode.InputDistribution inputDistribution = node.getInputDistribution().get();
+            List<LocalProperty<VariableReferenceExpression>> desiredProperties = new ArrayList<>();
+            if (!inputDistribution.getPartitionBy().isEmpty()) {
+                desiredProperties.add(new GroupingProperty<>(inputDistribution.getPartitionBy()));
+            }
+            inputDistribution.getOrderingScheme().ifPresent(orderingScheme ->
+                    orderingScheme.getOrderByVariables().stream()
+                            .map(variable -> new SortingProperty<>(variable, orderingScheme.getOrdering(variable)))
+                            .forEach(desiredProperties::add));
+
+            PlanWithProperties child = planChild(
+                    node,
+                    PreferredProperties.partitionedWithLocal(ImmutableSet.copyOf(inputDistribution.getPartitionBy()), desiredProperties)
+                            .mergeWithParent(preferredProperties, !isExactPartitioningPreferred(session)));
+
+            if (!isStreamPartitionedOn(child.getProperties(), inputDistribution.getPartitionBy()) &&
+                    !isNodePartitionedOn(child.getProperties(), inputDistribution.getPartitionBy())) {
+                checkState(!inputDistribution.getPartitionBy().isEmpty());
+                child = withDerivedProperties(
+                        partitionedExchange(
+                                idAllocator.getNextId(),
+                                selectExchangeScopeForPartitionedRemoteExchange(child.getNode(), false),
+                                child.getNode(),
+                                createPartitioning(inputDistribution.getPartitionBy()),
+                                Optional.empty()),
+                        child.getProperties());
+            }
+
+            return rebaseAndDeriveProperties(node, child);
+        }
+
+        @Override
         public PlanWithProperties visitSort(SortNode node, PreferredProperties preferredProperties)
+        {
+            if (!node.getPartitionBy().isEmpty()) {
+                return planSortWithPartition(node, preferredProperties);
+            }
+            return planSortWithoutPartition(node, preferredProperties);
+        }
+
+        private PlanWithProperties planSortWithPartition(SortNode node, PreferredProperties preferredProperties)
+        {
+            List<LocalProperty<VariableReferenceExpression>> desiredProperties = new ArrayList<>();
+            checkArgument(!node.getPartitionBy().isEmpty());
+            desiredProperties.add(new GroupingProperty<>(node.getPartitionBy()));
+
+            node.getOrderingScheme().getOrderByVariables().stream()
+                    .map(variable -> new SortingProperty<>(variable, node.getOrderingScheme().getOrdering(variable)))
+                    .forEach(desiredProperties::add);
+
+            PlanWithProperties child = planChild(
+                    node,
+                    PreferredProperties.partitionedWithLocal(ImmutableSet.copyOf(node.getPartitionBy()), desiredProperties)
+                            .mergeWithParent(preferredProperties, !isExactPartitioningPreferred(session)));
+
+            if (!isStreamPartitionedOn(child.getProperties(), node.getPartitionBy()) &&
+                    !isNodePartitionedOn(child.getProperties(), node.getPartitionBy())) {
+                child = withDerivedProperties(
+                        partitionedExchange(
+                                idAllocator.getNextId(),
+                                selectExchangeScopeForPartitionedRemoteExchange(child.getNode(), false),
+                                child.getNode(),
+                                createPartitioning(node.getPartitionBy()),
+                                Optional.empty()),
+                        child.getProperties());
+            }
+
+            return rebaseAndDeriveProperties(node, child);
+        }
+
+        private PlanWithProperties planSortWithoutPartition(SortNode node, PreferredProperties preferredProperties)
         {
             PlanWithProperties child = planChild(node, PreferredProperties.undistributed());
 
@@ -560,7 +637,8 @@ public class AddExchanges
                                         idAllocator.getNextId(),
                                         source,
                                         node.getOrderingScheme(),
-                                        true),
+                                        true,
+                                        node.getPartitionBy()),
                                 node.getOrderingScheme()),
                         child.getProperties());
             }
@@ -649,10 +727,6 @@ public class AddExchanges
             PlanWithProperties source = accept(node.getSource(), preferredProperties);
 
             Optional<PartitioningScheme> shufflePartitioningScheme = node.getTablePartitioningScheme();
-            if (!shufflePartitioningScheme.isPresent()) {
-                shufflePartitioningScheme = node.getPreferredShufflePartitioningScheme();
-            }
-
             if (!shufflePartitioningScheme.isPresent()) {
                 if (scaleWriters) {
                     shufflePartitioningScheme = Optional.of(new PartitioningScheme(Partitioning.create(SCALED_WRITER_DISTRIBUTION, ImmutableList.of()), source.getNode().getOutputVariables()));
@@ -1034,6 +1108,7 @@ public class AddExchanges
                                         filteringSource.getNode().getOutputVariables(),
                                         Optional.empty(),
                                         true,
+                                        COLUMNAR,
                                         Optional.empty())),
                                 filteringSource.getProperties());
                     }
@@ -1075,6 +1150,7 @@ public class AddExchanges
                                     filteringSource.getNode().getOutputVariables(),
                                     Optional.empty(),
                                     true,
+                                    COLUMNAR,
                                     Optional.empty())),
                             filteringSource.getProperties());
                 }
@@ -1250,6 +1326,7 @@ public class AddExchanges
                                                 source.getNode().getOutputVariables(),
                                                 Optional.empty(),
                                                 nullsAndAnyReplicated,
+                                                COLUMNAR,
                                                 Optional.empty())),
                                 source.getProperties());
                     }

@@ -14,7 +14,7 @@
 #pragma once
 #include <folly/io/async/SSLContext.h>
 #include <glog/logging.h>
-#include "presto_cpp/presto_protocol/presto_protocol.h"
+#include "presto_cpp/presto_protocol/core/presto_protocol_core.h"
 
 namespace facebook::presto::util {
 
@@ -43,5 +43,8 @@ long getProcessCpuTimeNs();
 /// In addition, the Velox based implementation provides additonal
 /// context such as the queryId.
 void installSignalHandler();
+
+std::string extractMessageBody(
+    const std::vector<std::unique_ptr<folly::IOBuf>>& body);
 
 } // namespace facebook::presto::util

@@ -221,13 +221,7 @@ proxygen::RequestHandler* TaskResource::createOrUpdateTaskImpl(
             httpSrvCpuExecutor_,
             [this, &body, taskId, createOrUpdateFunc]() {
               const auto startProcessCpuTimeNs = util::getProcessCpuTimeNs();
-
-              // TODO Avoid copy
-              std::ostringstream oss;
-              for (auto& buf : body) {
-                oss << std::string((const char*)buf->data(), buf->length());
-              }
-              std::string updateJson = oss.str();
+              std::string updateJson = util::extractMessageBody(body);
 
               std::unique_ptr<protocol::TaskInfo> taskInfo;
               try {
@@ -416,7 +410,7 @@ proxygen::RequestHandler* TaskResource::getResults(
   auto maxWait = getMaxWait(message).value_or(
       protocol::Duration(protocol::PRESTO_MAX_WAIT_DEFAULT));
   protocol::DataSize maxSize;
-  if (getDataSize || headers.exists(protocol::PRESTO_GET_DATA_SIZE_HEADER)) {
+  if (getDataSize) {
     maxSize = protocol::DataSize(0, protocol::DataUnit::BYTE);
   } else {
     maxSize = protocol::DataSize(

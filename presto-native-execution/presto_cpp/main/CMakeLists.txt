@@ -47,8 +47,10 @@ target_link_libraries(
   $<TARGET_OBJECTS:presto_protocol>
   presto_common
   presto_exception
+  presto_function_metadata
   presto_http
   presto_operators
+  presto_velox_conversion
   velox_aggregates
   velox_caching
   velox_common_base
@@ -119,5 +121,21 @@ if(PRESTO_STATS_REPORTER_TYPE)
     message(
       FATAL_ERROR
         "${PRESTO_STATS_REPORTER_TYPE} is not a valid stats reporter name")
+  endif()
+endif()
+
+if(PRESTO_MEMORY_CHECKER_TYPE)
+  add_compile_definitions(PRESTO_MEMORY_CHECKER_TYPE)
+  # Check if the current platform is Linux and the memory checker type is
+  # LINUX_MEMORY_CHECKER.
+  if(UNIX
+     AND NOT APPLE
+     AND (PRESTO_MEMORY_CHECKER_TYPE STREQUAL "LINUX_MEMORY_CHECKER"))
+    add_library(presto_linux_memory_checker OBJECT LinuxMemoryChecker.cpp)
+    target_link_libraries(presto_server presto_linux_memory_checker)
+  else()
+    message(
+      FATAL_ERROR
+        "${PRESTO_MEMORY_CHECKER_TYPE} is not a valid memory checker name")
   endif()
 endif()

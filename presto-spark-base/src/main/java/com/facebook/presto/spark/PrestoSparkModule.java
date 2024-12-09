@@ -168,6 +168,7 @@ import com.facebook.presto.sql.analyzer.BuiltInQueryPreparerProvider;
 import com.facebook.presto.sql.analyzer.FeaturesConfig;
 import com.facebook.presto.sql.analyzer.ForMetadataExtractor;
 import com.facebook.presto.sql.analyzer.FunctionsConfig;
+import com.facebook.presto.sql.analyzer.JavaFeaturesConfig;
 import com.facebook.presto.sql.analyzer.MetadataExtractor;
 import com.facebook.presto.sql.analyzer.MetadataExtractorMBean;
 import com.facebook.presto.sql.analyzer.QueryExplainer;
@@ -191,6 +192,7 @@ import com.facebook.presto.sql.planner.PlanOptimizers;
 import com.facebook.presto.sql.planner.plan.JsonCodecSimplePlanFragmentSerde;
 import com.facebook.presto.sql.planner.sanity.PlanChecker;
 import com.facebook.presto.sql.planner.sanity.PlanCheckerProviderManager;
+import com.facebook.presto.sql.planner.sanity.PlanCheckerProviderManagerConfig;
 import com.facebook.presto.sql.relational.RowExpressionDeterminismEvaluator;
 import com.facebook.presto.sql.relational.RowExpressionDomainTranslator;
 import com.facebook.presto.tracing.TracerProviderManager;
@@ -258,6 +260,7 @@ public class PrestoSparkModule
         configBinder(binder).bindConfigGlobalDefaults(QueryManagerConfig.class, PrestoSparkSettingsRequirements::setDefaults);
         configBinder(binder).bindConfig(FeaturesConfig.class);
         configBinder(binder).bindConfig(FunctionsConfig.class);
+        configBinder(binder).bindConfig(JavaFeaturesConfig.class);
         configBinder(binder).bindConfigGlobalDefaults(FeaturesConfig.class, PrestoSparkSettingsRequirements::setDefaults);
         configBinder(binder).bindConfig(MemoryManagerConfig.class);
         configBinder(binder).bindConfig(TaskManagerConfig.class);
@@ -274,6 +277,7 @@ public class PrestoSparkModule
         configBinder(binder).bindConfig(NativeExecutionSystemConfig.class);
         configBinder(binder).bindConfig(NativeExecutionNodeConfig.class);
         configBinder(binder).bindConfig(NativeExecutionConnectorConfig.class);
+        configBinder(binder).bindConfig(PlanCheckerProviderManagerConfig.class);
 
         // json codecs
         jsonCodecBinder(binder).bindJsonCodec(ViewDefinition.class);

@@ -121,6 +121,10 @@ class PrestoServer {
 
   virtual void stopAdditionalPeriodicTasks(){};
 
+  virtual void addMemoryCheckerPeriodicTask();
+
+  virtual void stopMemoryCheckerPeriodicTask();
+
   virtual void initializeCoordinatorDiscoverer();
 
   virtual std::shared_ptr<velox::exec::TaskListener> getTaskListener();
@@ -207,6 +211,10 @@ class PrestoServer {
 
   void reportNodeStatus(proxygen::ResponseHandler* downstream);
 
+  void handleGracefulShutdown(
+      const std::vector<std::unique_ptr<folly::IOBuf>>& body,
+      proxygen::ResponseHandler* downstream);
+
   protocol::NodeStatus fetchNodeStatus();
 
   void populateMemAndCPUInfo();
@@ -216,6 +224,8 @@ class PrestoServer {
 
   void registerSystemConnector();
 
+  void registerSidecarEndpoints();
+
   std::unique_ptr<velox::cache::SsdCache> setupSsdCache();
 
   const std::string configDirectoryPath_;
@@ -223,7 +233,7 @@ class PrestoServer {
   std::shared_ptr<CoordinatorDiscoverer> coordinatorDiscoverer_;
 
   // Executor for background writing into SSD cache.
-  std::unique_ptr<folly::IOThreadPoolExecutor> cacheExecutor_;
+  std::unique_ptr<folly::CPUThreadPoolExecutor> cacheExecutor_;
 
   // Executor for async IO for connectors.
   std::unique_ptr<folly::IOThreadPoolExecutor> connectorIoExecutor_;
@@ -235,7 +245,7 @@ class PrestoServer {
   std::shared_ptr<folly::CPUThreadPoolExecutor> exchangeHttpCpuExecutor_;
 
   // Executor for HTTP request dispatching
-  std::shared_ptr<folly::IOThreadPoolExecutor> httpSrvIOExecutor_;
+  std::shared_ptr<folly::IOThreadPoolExecutor> httpSrvIoExecutor_;
 
   // Executor for HTTP request processing after dispatching
   std::shared_ptr<folly::CPUThreadPoolExecutor> httpSrvCpuExecutor_;
@@ -258,6 +268,7 @@ class PrestoServer {
   std::unique_ptr<Announcer> announcer_;
   std::unique_ptr<PeriodicHeartbeatManager> heartbeatManager_;
   std::shared_ptr<velox::memory::MemoryPool> pool_;
+  std::shared_ptr<velox::memory::MemoryPool> nativeWorkerPool_;
   std::unique_ptr<TaskManager> taskManager_;
   std::unique_ptr<TaskResource> taskResource_;
   std::atomic<NodeState> nodeState_{NodeState::kActive};

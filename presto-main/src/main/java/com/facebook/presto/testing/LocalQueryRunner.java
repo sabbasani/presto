@@ -73,6 +73,7 @@ import com.facebook.presto.execution.RenameTableTask;
 import com.facebook.presto.execution.ResetSessionTask;
 import com.facebook.presto.execution.RollbackTask;
 import com.facebook.presto.execution.ScheduledSplit;
+import com.facebook.presto.execution.SetPropertiesTask;
 import com.facebook.presto.execution.SetSessionTask;
 import com.facebook.presto.execution.StartTransactionTask;
 import com.facebook.presto.execution.TaskManagerConfig;
@@ -103,7 +104,6 @@ import com.facebook.presto.metadata.MetadataManager;
 import com.facebook.presto.metadata.MetadataUtil;
 import com.facebook.presto.metadata.QualifiedTablePrefix;
 import com.facebook.presto.metadata.SchemaPropertyManager;
-import com.facebook.presto.metadata.SessionPropertyManager;
 import com.facebook.presto.metadata.Split;
 import com.facebook.presto.metadata.TablePropertyManager;
 import com.facebook.presto.operator.Driver;
@@ -165,6 +165,7 @@ import com.facebook.presto.sql.analyzer.BuiltInQueryPreparer.BuiltInPreparedQuer
 import com.facebook.presto.sql.analyzer.BuiltInQueryPreparerProvider;
 import com.facebook.presto.sql.analyzer.FeaturesConfig;
 import com.facebook.presto.sql.analyzer.FunctionsConfig;
+import com.facebook.presto.sql.analyzer.JavaFeaturesConfig;
 import com.facebook.presto.sql.analyzer.QueryExplainer;
 import com.facebook.presto.sql.analyzer.QueryPreparerProviderManager;
 import com.facebook.presto.sql.gen.ExpressionCompiler;
@@ -190,6 +191,7 @@ import com.facebook.presto.sql.planner.plan.JsonCodecSimplePlanFragmentSerde;
 import com.facebook.presto.sql.planner.planPrinter.PlanPrinter;
 import com.facebook.presto.sql.planner.sanity.PlanChecker;
 import com.facebook.presto.sql.planner.sanity.PlanCheckerProviderManager;
+import com.facebook.presto.sql.planner.sanity.PlanCheckerProviderManagerConfig;
 import com.facebook.presto.sql.relational.RowExpressionDeterminismEvaluator;
 import com.facebook.presto.sql.relational.RowExpressionDomainTranslator;
 import com.facebook.presto.sql.tree.AlterFunction;
@@ -210,6 +212,7 @@ import com.facebook.presto.sql.tree.RenameColumn;
 import com.facebook.presto.sql.tree.RenameTable;
 import com.facebook.presto.sql.tree.ResetSession;
 import com.facebook.presto.sql.tree.Rollback;
+import com.facebook.presto.sql.tree.SetProperties;
 import com.facebook.presto.sql.tree.SetSession;
 import com.facebook.presto.sql.tree.StartTransaction;
 import com.facebook.presto.sql.tree.Statement;
@@ -265,6 +268,7 @@ import static com.facebook.presto.common.RuntimeMetricName.OPTIMIZER_TIME_NANOS;
 import static com.facebook.presto.cost.StatsCalculatorModule.createNewStatsCalculator;
 import static com.facebook.presto.execution.scheduler.StreamingPlanSection.extractStreamingSections;
 import static com.facebook.presto.execution.scheduler.TableWriteInfo.createTableWriteInfo;
+import static com.facebook.presto.metadata.SessionPropertyManager.createTestingSessionPropertyManager;
 import static com.facebook.presto.spi.connector.ConnectorSplitManager.SplitSchedulingStrategy.GROUPED_SCHEDULING;
 import static com.facebook.presto.spi.connector.ConnectorSplitManager.SplitSchedulingStrategy.REWINDABLE_GROUPED_SCHEDULING;
 import static com.facebook.presto.spi.connector.ConnectorSplitManager.SplitSchedulingStrategy.UNGROUPED_SCHEDULING;
@@ -350,6 +354,8 @@ public class LocalQueryRunner
 
     private final ReadWriteLock lock = new ReentrantReadWriteLock();
 
+    private List<PlanOptimizer> additionalOptimizer = ImmutableList.of();
+
     public LocalQueryRunner(Session defaultSession)
     {
         this(defaultSession, new FeaturesConfig(), new FunctionsConfig(), new NodeSpillConfig(), false, false);
@@ -416,7 +422,7 @@ public class LocalQueryRunner
         this.metadata = new MetadataManager(
                 new FunctionAndTypeManager(transactionManager, blockEncodingManager, featuresConfig, functionsConfig, new HandleResolver(), ImmutableSet.of()),
                 blockEncodingManager,
-                new SessionPropertyManager(
+                createTestingSessionPropertyManager(
                         new SystemSessionProperties(
                                 new QueryManagerConfig(),
                                 new TaskManagerConfig(),
@@ -429,14 +435,16 @@ public class LocalQueryRunner
                                 new NodeSpillConfig(),
                                 new TracingConfig(),
                                 new CompilerConfig(),
-                                new HistoryBasedOptimizationConfig())),
+                                new HistoryBasedOptimizationConfig()).getSessionProperties(),
+                        new JavaFeaturesConfig(),
+                        nodeSpillConfig),
                 new SchemaPropertyManager(),
                 new TablePropertyManager(),
                 new ColumnPropertyManager(),
                 new AnalyzePropertyManager(),
                 transactionManager);
         this.splitManager = new SplitManager(metadata, new QueryManagerConfig(), nodeSchedulerConfig);
-        this.planCheckerProviderManager = new PlanCheckerProviderManager(new JsonCodecSimplePlanFragmentSerde(jsonCodec(SimplePlanFragment.class)));
+        this.planCheckerProviderManager = new PlanCheckerProviderManager(new JsonCodecSimplePlanFragmentSerde(jsonCodec(SimplePlanFragment.class)), new PlanCheckerProviderManagerConfig());
         this.distributedPlanChecker = new PlanChecker(featuresConfig, false, planCheckerProviderManager);
         this.singleNodePlanChecker = new PlanChecker(featuresConfig, true, planCheckerProviderManager);
         this.planFragmenter = new PlanFragmenter(this.metadata, this.nodePartitioningManager, new QueryManagerConfig(), featuresConfig, planCheckerProviderManager);
@@ -445,7 +453,7 @@ public class LocalQueryRunner
         this.statsNormalizer = new StatsNormalizer();
         this.scalarStatsCalculator = new ScalarStatsCalculator(metadata);
         this.filterStatsCalculator = new FilterStatsCalculator(metadata, scalarStatsCalculator, statsNormalizer);
-        this.historyBasedPlanStatisticsManager = new HistoryBasedPlanStatisticsManager(objectMapper, new SessionPropertyManager(), metadata, new HistoryBasedOptimizationConfig(), featuresConfig, new NodeVersion("1"));
+        this.historyBasedPlanStatisticsManager = new HistoryBasedPlanStatisticsManager(objectMapper, createTestingSessionPropertyManager(), metadata, new HistoryBasedOptimizationConfig(), featuresConfig, new NodeVersion("1"));
         this.fragmentStatsProvider = new FragmentStatsProvider();
         this.statsCalculator = createNewStatsCalculator(metadata, scalarStatsCalculator, statsNormalizer, filterStatsCalculator, historyBasedPlanStatisticsManager, fragmentStatsProvider);
         this.taskCountEstimator = new TaskCountEstimator(() -> nodeCountForStats);
@@ -579,6 +587,7 @@ public class LocalQueryRunner
                 .put(StartTransaction.class, new StartTransactionTask())
                 .put(Commit.class, new CommitTask())
                 .put(Rollback.class, new RollbackTask())
+                .put(SetProperties.class, new SetPropertiesTask())
                 .build();
 
         SpillerStats spillerStats = new SpillerStats();
@@ -1053,12 +1062,12 @@ public class LocalQueryRunner
         return UNGROUPED_SCHEDULING;
     }
 
-    public SubPlan createSubPlans(Session session, Plan plan, boolean forceSingleNode)
+    public SubPlan createSubPlans(Session session, Plan plan, boolean noExchange)
     {
         return planFragmenter.createSubPlans(
                 session,
                 plan,
-                forceSingleNode,
+                noExchange,
                 new PlanNodeIdAllocator()
                 {
                     @Override
@@ -1081,24 +1090,33 @@ public class LocalQueryRunner
         return createPlan(session, sql, stage, true, warningCollector);
     }
 
-    public Plan createPlan(Session session, @Language("SQL") String sql, Optimizer.PlanStage stage, boolean forceSingleNode, WarningCollector warningCollector)
+    public Plan createPlan(Session session, @Language("SQL") String sql, Optimizer.PlanStage stage, boolean noExchange, WarningCollector warningCollector)
     {
         AnalyzerOptions analyzerOptions = createAnalyzerOptions(session, warningCollector);
         BuiltInPreparedQuery preparedQuery = new BuiltInQueryPreparer(sqlParser).prepareQuery(analyzerOptions, sql, session.getPreparedStatements(), warningCollector);
         assertFormattedSql(sqlParser, createParsingOptions(session), preparedQuery.getStatement());
 
-        return createPlan(session, sql, getPlanOptimizers(forceSingleNode), stage, warningCollector);
+        return createPlan(session, sql, getPlanOptimizers(noExchange), stage, warningCollector);
     }
 
-    public List<PlanOptimizer> getPlanOptimizers(boolean forceSingleNode)
+    public void setAdditionalOptimizer(List<PlanOptimizer> additionalOptimizer)
+    {
+        this.additionalOptimizer = additionalOptimizer;
+    }
+
+    public List<PlanOptimizer> getPlanOptimizers(boolean noExchange)
     {
         FeaturesConfig featuresConfig = new FeaturesConfig()
                 .setDistributedIndexJoinsEnabled(false)
                 .setOptimizeHashGeneration(true);
-        return new PlanOptimizers(
+        ImmutableList.Builder<PlanOptimizer> planOptimizers = ImmutableList.builder();
+        if (!additionalOptimizer.isEmpty()) {
+            planOptimizers.addAll(additionalOptimizer);
+        }
+        planOptimizers.addAll(new PlanOptimizers(
                 metadata,
                 sqlParser,
-                forceSingleNode,
+                noExchange,
                 new MBeanExporter(new TestingMBeanServer()),
                 splitManager,
                 planOptimizerManager,
@@ -1109,7 +1127,8 @@ public class LocalQueryRunner
                 new CostComparator(featuresConfig),
                 taskCountEstimator,
                 partitioningProviderManager,
-                featuresConfig).getPlanningTimeOptimizers();
+                featuresConfig).getPlanningTimeOptimizers());
+        return planOptimizers.build();
     }
 
     public Plan createPlan(Session session, @Language("SQL") String sql, List<PlanOptimizer> optimizers, WarningCollector warningCollector)

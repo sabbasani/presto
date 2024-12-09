@@ -551,13 +551,13 @@ public abstract class AbstractTestQueryFramework
     {
         Metadata metadata = queryRunner.getMetadata();
         FeaturesConfig featuresConfig = createFeaturesConfig();
-        boolean forceSingleNode = queryRunner.getNodeCount() == 1;
+        boolean noExchange = queryRunner.getNodeCount() == 1;
         TaskCountEstimator taskCountEstimator = new TaskCountEstimator(queryRunner::getNodeCount);
         CostCalculator costCalculator = new CostCalculatorUsingExchanges(taskCountEstimator);
         List<PlanOptimizer> optimizers = new PlanOptimizers(
                 metadata,
                 sqlParser,
-                forceSingleNode,
+                noExchange,
                 new MBeanExporter(new TestingMBeanServer()),
                 queryRunner.getSplitManager(),
                 queryRunner.getPlanOptimizerManager(),
@@ -618,5 +618,10 @@ public abstract class AbstractTestQueryFramework
     {
         ExpectedQueryRunner get()
                 throws Exception;
+    }
+
+    public static void dropTableIfExists(QueryRunner queryRunner, String catalogName, String schemaName, String tableName)
+    {
+        queryRunner.execute(format("DROP TABLE IF EXISTS %s.%s.%s", catalogName, schemaName, tableName));
     }
 }
