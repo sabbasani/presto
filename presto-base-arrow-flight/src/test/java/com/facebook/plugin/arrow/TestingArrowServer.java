@@ -260,6 +260,7 @@ public class TestingArrowServer
     @Override
     public void listActions(CallContext callContext, StreamListener<ActionType> streamListener)
     {
+        throw new UnsupportedOperationException("This operation is not supported");
     }
 
     private ArrowType convertSqlTypeToArrowType(String sqlType, int precision, int scale)
