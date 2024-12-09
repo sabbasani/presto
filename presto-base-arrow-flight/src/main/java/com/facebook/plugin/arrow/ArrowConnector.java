@@ -34,16 +34,20 @@ public class ArrowConnector
     private final ConnectorPageSourceProvider pageSourceProvider;
     private final ConnectorHandleResolver handleResolver;
 
+    private final ArrowFlightClientHandler arrowFlightClientHandler;
+
     @Inject
     public ArrowConnector(ConnectorMetadata metadata,
-                          ConnectorHandleResolver handleResolver,
-                          ConnectorSplitManager splitManager,
-                          ConnectorPageSourceProvider pageSourceProvider)
+            ConnectorHandleResolver handleResolver,
+            ConnectorSplitManager splitManager,
+            ConnectorPageSourceProvider pageSourceProvider,
+            ArrowFlightClientHandler arrowFlightClientHandler)
     {
         this.metadata = requireNonNull(metadata, "Metadata is null");
-        this.handleResolver = requireNonNull(handleResolver, "Metadata is null");
+        this.handleResolver = requireNonNull(handleResolver, "handleResolver is null");
         this.splitManager = requireNonNull(splitManager, "SplitManager is null");
         this.pageSourceProvider = requireNonNull(pageSourceProvider, "PageSinkProvider is null");
+        this.arrowFlightClientHandler = requireNonNull(arrowFlightClientHandler, "arrow flight handler is null");
     }
 
     public Optional<ConnectorHandleResolver> getHandleResolver()
@@ -73,5 +77,11 @@ public class ArrowConnector
     public ConnectorPageSourceProvider getPageSourceProvider()
     {
         return pageSourceProvider;
+    }
+
+    @Override
+    public void shutdown()
+    {
+        arrowFlightClientHandler.closeRootallocator();
     }
 }

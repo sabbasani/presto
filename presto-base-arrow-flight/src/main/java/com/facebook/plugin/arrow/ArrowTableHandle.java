@@ -17,6 +17,8 @@ import com.facebook.presto.spi.ConnectorTableHandle;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
+import java.util.Objects;
+
 public class ArrowTableHandle
         implements ConnectorTableHandle
 {
@@ -48,5 +50,24 @@ public class ArrowTableHandle
     public String toString()
     {
         return schema + ":" + table;
+    }
+
+    @Override
+    public boolean equals(Object o)
+    {
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+        ArrowTableHandle that = (ArrowTableHandle) o;
+        return Objects.equals(schema, that.schema) && Objects.equals(table, that.table);
+    }
+
+    @Override
+    public int hashCode()
+    {
+        return Objects.hash(schema, table);
     }
 }

@@ -14,7 +14,6 @@
 package com.facebook.plugin.arrow;
 
 import org.apache.arrow.flight.FlightClient;
-import org.apache.arrow.memory.RootAllocator;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -27,13 +26,11 @@ public class ArrowFlightClient
 {
     private final FlightClient flightClient;
     private final Optional<InputStream> trustedCertificate;
-    private RootAllocator allocator;
 
-    public ArrowFlightClient(FlightClient flightClient, Optional<InputStream> trustedCertificate, RootAllocator allocator)
+    public ArrowFlightClient(FlightClient flightClient, Optional<InputStream> trustedCertificate)
     {
         this.flightClient = requireNonNull(flightClient, "flightClient cannot be null");
         this.trustedCertificate = requireNonNull(trustedCertificate, "trustedCertificate is null");
-        this.allocator = requireNonNull(allocator, "allocator is null");
     }
 
     public FlightClient getFlightClient()
@@ -53,6 +50,5 @@ public class ArrowFlightClient
         if (trustedCertificate.isPresent()) {
             trustedCertificate.get().close();
         }
-        allocator.close();
     }
 }

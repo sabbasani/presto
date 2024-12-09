@@ -46,7 +46,7 @@ public class ArrowConnectorFactory
     public ArrowConnectorFactory(String name, Module module, ClassLoader classLoader)
     {
         checkArgument(!isNullOrEmpty(name), "name is null or empty");
-        this.name = name;
+        this.name = requireNonNull(name, "name is null");
         this.module = requireNonNull(module, "module is null");
         this.classLoader = requireNonNull(classLoader, "classLoader is null");
     }

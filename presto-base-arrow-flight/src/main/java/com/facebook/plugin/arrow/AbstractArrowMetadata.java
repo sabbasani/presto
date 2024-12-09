@@ -38,17 +38,20 @@ import com.facebook.presto.spi.ConnectorTableLayoutResult;
 import com.facebook.presto.spi.ConnectorTableMetadata;
 import com.facebook.presto.spi.Constraint;
 import com.facebook.presto.spi.NotFoundException;
+import com.facebook.presto.spi.PrestoException;
 import com.facebook.presto.spi.SchemaTableName;
 import com.facebook.presto.spi.SchemaTablePrefix;
+import com.facebook.presto.spi.StandardErrorCode;
 import com.facebook.presto.spi.connector.ConnectorMetadata;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import org.apache.arrow.flight.FlightDescriptor;
-import org.apache.arrow.flight.FlightInfo;
 import org.apache.arrow.vector.types.pojo.ArrowType;
 import org.apache.arrow.vector.types.pojo.Field;
+import org.apache.arrow.vector.types.pojo.Schema;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -131,7 +134,7 @@ public abstract class AbstractArrowMetadata
         }
     }
 
-    protected abstract FlightDescriptor getFlightDescriptor(ArrowFlightConfig config, Optional<String> query, String schema, String table);
+    protected abstract FlightDescriptor getFlightDescriptor(Optional<String> query, String schema, String table);
 
     protected abstract String getDataSourceSpecificSchemaName(ArrowFlightConfig config, String schemaName);
 
@@ -155,11 +158,11 @@ public abstract class AbstractArrowMetadata
         try {
             String dataSourceSpecificSchemaName = getDataSourceSpecificSchemaName(config, schema);
             String dataSourceSpecificTableName = getDataSourceSpecificTableName(config, table);
-            FlightDescriptor flightDescriptor = getFlightDescriptor(config, Optional.empty(),
+            FlightDescriptor flightDescriptor = getFlightDescriptor(Optional.empty(),
                     dataSourceSpecificSchemaName, dataSourceSpecificTableName);
 
-            FlightInfo flightInfo = clientHandler.getFlightInfo(flightDescriptor, connectorSession);
-            List<Field> fields = flightInfo.getSchema().getFields();
+            Optional<Schema> flightschema = clientHandler.getSchema(flightDescriptor, connectorSession);
+            List<Field> fields = flightschema.map(Schema::getFields).orElse(Collections.emptyList());
             return fields;
         }
         catch (Exception e) {
@@ -170,7 +173,7 @@ public abstract class AbstractArrowMetadata
     @Override
     public Map<String, ColumnHandle> getColumnHandles(ConnectorSession session, ConnectorTableHandle tableHandle)
     {
-        Map<String, ColumnHandle> columns = new HashMap<>();
+        Map<String, ColumnHandle> columnHandles = new HashMap<>();
 
         String schemaValue = ((ArrowTableHandle) tableHandle).getSchema();
         String tableValue = ((ArrowTableHandle) tableHandle).getTable();
@@ -183,14 +186,21 @@ public abstract class AbstractArrowMetadata
             logger.debug("The value of the flight columnName is:- %s", columnName);
 
             Type type = getPrestoTypeFromArrowField(field);
-            columns.put(columnName, new ArrowColumnHandle(columnName, type));
+            columnHandles.put(columnName, new ArrowColumnHandle(columnName, type));
         }
-        return columns;
+        return columnHandles;
     }
 
     @Override
     public List<ConnectorTableLayoutResult> getTableLayouts(ConnectorSession session, ConnectorTableHandle table, Constraint<ColumnHandle> constraint, Optional<Set<ColumnHandle>> desiredColumns)
     {
+        if (!(table instanceof ArrowTableHandle)) {
+            throw new PrestoException(
+                    StandardErrorCode.INVALID_CAST_ARGUMENT,
+                    "Invalid table handle: Expected an instance of ArrowTableHandle but received "
+                            + table.getClass().getSimpleName() + "");
+        }
+
         ArrowTableHandle tableHandle = (ArrowTableHandle) table;
 
         List<ArrowColumnHandle> columns = new ArrayList<>();
