@@ -2,7 +2,8 @@
 ======================
 Arrow Flight Connector
 ======================
-This connector allows querying multiple data sources that are supported by an Arrow Flight server.
+This connector allows querying multiple data sources that are supported by an Arrow Flight server. It supports parallel transfers, allowing data to be streamed to or from a cluster of servers simultaneously.
+Arrow's official documentation can be found at https://arrow.apache.org/blog/2019/10/13/introducing-arrow-flight
 
 Getting Started with base-arrow-module: Essential Abstract Methods for Developers
 ---------------------------------------------------------------------------------
