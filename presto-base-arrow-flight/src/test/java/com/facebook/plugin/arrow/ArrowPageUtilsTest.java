@@ -46,6 +46,7 @@ import org.apache.arrow.vector.complex.ListVector;
 import org.apache.arrow.vector.complex.impl.UnionListWriter;
 import org.apache.arrow.vector.dictionary.Dictionary;
 import org.apache.arrow.vector.dictionary.DictionaryEncoder;
+import org.apache.arrow.vector.types.pojo.ArrowType;
 import org.apache.arrow.vector.types.pojo.DictionaryEncoding;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
@@ -280,7 +281,8 @@ public class ArrowPageUtilsTest
         rawVector.setValueCount(VECTOR_LENGTH);
 
         // Encode using dictionary
-        Dictionary dictionary = new Dictionary(dictionaryVector, new DictionaryEncoding(1L, false, null));
+        ArrowType.Int index = new ArrowType.Int(16,true);
+        Dictionary dictionary = new Dictionary(dictionaryVector, new DictionaryEncoding(1L, false, index));
         BaseIntVector encodedVector = (BaseIntVector) DictionaryEncoder.encode(rawVector, dictionary);
 
         // Process the dictionary vector
