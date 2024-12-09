@@ -18,7 +18,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import javax.annotation.concurrent.Immutable;
 
 @Immutable
-public final class TestingInteractionProperties
+public class TestingInteractionProperties
 {
     @JsonProperty("select_statement")
     private final String selectStatement;
