@@ -82,85 +82,15 @@ public class ArrowPageUtils
     {
     }
 
-    public static Block buildBlockFromVector(FieldVector vector, Type type, DictionaryProvider dictionaryProvider)
+    public static Block buildBlockFromFieldVector(FieldVector vector, Type type, DictionaryProvider dictionaryProvider)
     {
         if (vector.getField().getDictionary() != null) {
             Dictionary dictionary = dictionaryProvider.lookup(vector.getField().getDictionary().getId());
             return buildBlockFromDictionaryVector(vector, dictionary.getVector());
         }
-        else if (vector instanceof BitVector) {
-            return buildBlockFromBitVector((BitVector) vector, type);
+        else {
+            return buildBlockFromValueVector(vector, type);
         }
-        else if (vector instanceof TinyIntVector) {
-            return buildBlockFromTinyIntVector((TinyIntVector) vector, type);
-        }
-        else if (vector instanceof IntVector) {
-            return buildBlockFromIntVector((IntVector) vector, type);
-        }
-        else if (vector instanceof SmallIntVector) {
-            return buildBlockFromSmallIntVector((SmallIntVector) vector, type);
-        }
-        else if (vector instanceof BigIntVector) {
-            return buildBlockFromBigIntVector((BigIntVector) vector, type);
-        }
-        else if (vector instanceof DecimalVector) {
-            return buildBlockFromDecimalVector((DecimalVector) vector, type);
-        }
-        else if (vector instanceof NullVector) {
-            return buildBlockFromNullVector((NullVector) vector, type);
-        }
-        else if (vector instanceof TimeStampMicroVector) {
-            return buildBlockFromTimeStampMicroVector((TimeStampMicroVector) vector, type);
-        }
-        else if (vector instanceof TimeStampMilliVector) {
-            return buildBlockFromTimeStampMilliVector((TimeStampMilliVector) vector, type);
-        }
-        else if (vector instanceof Float4Vector) {
-            return buildBlockFromFloat4Vector((Float4Vector) vector, type);
-        }
-        else if (vector instanceof Float8Vector) {
-            return buildBlockFromFloat8Vector((Float8Vector) vector, type);
-        }
-        else if (vector instanceof VarCharVector) {
-            if (type instanceof CharType) {
-                return buildCharTypeBlockFromVarcharVector((VarCharVector) vector, type);
-            }
-            else if (type instanceof TimeType) {
-                return buildTimeTypeBlockFromVarcharVector((VarCharVector) vector, type);
-            }
-            else {
-                return buildBlockFromVarCharVector((VarCharVector) vector, type);
-            }
-        }
-        else if (vector instanceof VarBinaryVector) {
-            return buildBlockFromVarBinaryVector((VarBinaryVector) vector, type);
-        }
-        else if (vector instanceof DateDayVector) {
-            return buildBlockFromDateDayVector((DateDayVector) vector, type);
-        }
-        else if (vector instanceof DateMilliVector) {
-            return buildBlockFromDateMilliVector((DateMilliVector) vector, type);
-        }
-        else if (vector instanceof TimeMilliVector) {
-            return buildBlockFromTimeMilliVector((TimeMilliVector) vector, type);
-        }
-        else if (vector instanceof TimeSecVector) {
-            return buildBlockFromTimeSecVector((TimeSecVector) vector, type);
-        }
-        else if (vector instanceof TimeStampSecVector) {
-            return buildBlockFromTimeStampSecVector((TimeStampSecVector) vector, type);
-        }
-        else if (vector instanceof TimeMicroVector) {
-            return buildBlockFromTimeMicroVector((TimeMicroVector) vector, type);
-        }
-        else if (vector instanceof TimeStampMilliTZVector) {
-            return buildBlockFromTimeMilliTZVector((TimeStampMilliTZVector) vector, type);
-        }
-        else if (vector instanceof ListVector) {
-            return buildBlockFromListVector((ListVector) vector, type);
-        }
-
-        throw new UnsupportedOperationException("Unsupported vector type: " + vector.getClass().getSimpleName());
     }
 
     public static Block buildBlockFromDictionaryVector(FieldVector fieldVector, FieldVector dictionaryVector)
@@ -225,6 +155,9 @@ public class ArrowPageUtils
             else if (intType.getBitWidth() == 64) {
                 return BigintType.BIGINT;
             }
+            else {
+                throw new UnsupportedOperationException("Unsupported Integer bit width: " + intType.getBitWidth());
+            }
         }
         else if (arrowType instanceof ArrowType.FloatingPoint) {
             ArrowType.FloatingPoint fpType = (ArrowType.FloatingPoint) arrowType;
@@ -254,14 +187,32 @@ public class ArrowPageUtils
 
     private static Block buildBlockFromValueVector(ValueVector vector, Type prestoType)
     {
-        if (vector instanceof VarCharVector) {
-            return buildBlockFromVarCharVector((VarCharVector) vector, prestoType);
+        if (vector instanceof BitVector) {
+            return buildBlockFromBitVector((BitVector) vector, prestoType);
+        }
+        else if (vector instanceof TinyIntVector) {
+            return buildBlockFromTinyIntVector((TinyIntVector) vector, prestoType);
         }
         else if (vector instanceof IntVector) {
             return buildBlockFromIntVector((IntVector) vector, prestoType);
         }
+        else if (vector instanceof SmallIntVector) {
+            return buildBlockFromSmallIntVector((SmallIntVector) vector, prestoType);
+        }
         else if (vector instanceof BigIntVector) {
             return buildBlockFromBigIntVector((BigIntVector) vector, prestoType);
+        }
+        else if (vector instanceof DecimalVector) {
+            return buildBlockFromDecimalVector((DecimalVector) vector, prestoType);
+        }
+        else if (vector instanceof NullVector) {
+            return buildBlockFromNullVector((NullVector) vector, prestoType);
+        }
+        else if (vector instanceof TimeStampMicroVector) {
+            return buildBlockFromTimeStampMicroVector((TimeStampMicroVector) vector, prestoType);
+        }
+        else if (vector instanceof TimeStampMilliVector) {
+            return buildBlockFromTimeStampMilliVector((TimeStampMilliVector) vector, prestoType);
         }
         else if (vector instanceof Float4Vector) {
             return buildBlockFromFloat4Vector((Float4Vector) vector, prestoType);
@@ -269,26 +220,43 @@ public class ArrowPageUtils
         else if (vector instanceof Float8Vector) {
             return buildBlockFromFloat8Vector((Float8Vector) vector, prestoType);
         }
-        else if (vector instanceof BitVector) {
-            return buildBlockFromBitVector((BitVector) vector, prestoType);
+        else if (vector instanceof VarCharVector) {
+            if (prestoType instanceof CharType) {
+                return buildCharTypeBlockFromVarcharVector((VarCharVector) vector, prestoType);
+            }
+            else if (prestoType instanceof TimeType) {
+                return buildTimeTypeBlockFromVarcharVector((VarCharVector) vector, prestoType);
+            }
+            else {
+                return buildBlockFromVarCharVector((VarCharVector) vector, prestoType);
+            }
         }
         else if (vector instanceof VarBinaryVector) {
             return buildBlockFromVarBinaryVector((VarBinaryVector) vector, prestoType);
         }
-        else if (vector instanceof DecimalVector) {
-            return buildBlockFromDecimalVector((DecimalVector) vector, prestoType);
-        }
-        else if (vector instanceof TinyIntVector) {
-            return buildBlockFromTinyIntVector((TinyIntVector) vector, prestoType);
-        }
-        else if (vector instanceof SmallIntVector) {
-            return buildBlockFromSmallIntVector((SmallIntVector) vector, prestoType);
-        }
         else if (vector instanceof DateDayVector) {
             return buildBlockFromDateDayVector((DateDayVector) vector, prestoType);
         }
+        else if (vector instanceof DateMilliVector) {
+            return buildBlockFromDateMilliVector((DateMilliVector) vector, prestoType);
+        }
+        else if (vector instanceof TimeMilliVector) {
+            return buildBlockFromTimeMilliVector((TimeMilliVector) vector, prestoType);
+        }
+        else if (vector instanceof TimeSecVector) {
+            return buildBlockFromTimeSecVector((TimeSecVector) vector, prestoType);
+        }
+        else if (vector instanceof TimeStampSecVector) {
+            return buildBlockFromTimeStampSecVector((TimeStampSecVector) vector, prestoType);
+        }
+        else if (vector instanceof TimeMicroVector) {
+            return buildBlockFromTimeMicroVector((TimeMicroVector) vector, prestoType);
+        }
         else if (vector instanceof TimeStampMilliTZVector) {
-            return buildBlockFromTimeStampMicroVector((TimeStampMicroVector) vector, prestoType);
+            return buildBlockFromTimeMilliTZVector((TimeStampMilliTZVector) vector, prestoType);
+        }
+        else if (vector instanceof ListVector) {
+            return buildBlockFromListVector((ListVector) vector, prestoType);
         }
         else {
             throw new UnsupportedOperationException("Unsupported vector type: " + vector.getClass());
