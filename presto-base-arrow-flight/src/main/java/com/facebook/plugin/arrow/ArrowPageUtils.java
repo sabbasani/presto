@@ -82,9 +82,9 @@ public class ArrowPageUtils
     {
     }
 
-    public static Block buildBlockFromVector(FieldVector vector, Type type, DictionaryProvider dictionaryProvider, boolean isDictionaryVector)
+    public static Block buildBlockFromVector(FieldVector vector, Type type, DictionaryProvider dictionaryProvider)
     {
-        if (isDictionaryVector) {
+        if (vector.getField().getDictionary() != null) {
             Dictionary dictionary = dictionaryProvider.lookup(vector.getField().getDictionary().getId());
             return buildBlockFromDictionaryVector(vector, dictionary.getVector());
         }
@@ -169,20 +169,12 @@ public class ArrowPageUtils
         requireNonNull(fieldVector, "encoded vector is null");
         requireNonNull(dictionaryVector, "dictionary vector is null");
 
-        // Create a BlockBuilder for the decoded vector's data type
         Type prestoType = getPrestoTypeFromArrowType(dictionaryVector.getField().getType());
 
-        Block dictionaryblock = null;
-        // Populate the block dynamically based on vector type
-        for (int i = 0; i < dictionaryVector.getValueCount(); i++) {
-            if (!dictionaryVector.isNull(i)) {
-                dictionaryblock = appendValueToBlock(dictionaryVector, prestoType);
-            }
-        }
+        Block dictionaryblock = buildBlockFromValueVector(dictionaryVector, prestoType);
 
+        // Return Presto DictionaryBlock
         return getDictionaryBlock(fieldVector, dictionaryblock);
-
-        // Create the Presto DictionaryBlock
     }
 
     private static DictionaryBlock getDictionaryBlock(FieldVector fieldVector, Block dictionaryblock)
@@ -260,7 +252,7 @@ public class ArrowPageUtils
         throw new UnsupportedOperationException("Unsupported ArrowType: " + arrowType);
     }
 
-    private static Block appendValueToBlock(ValueVector vector, Type prestoType)
+    private static Block buildBlockFromValueVector(ValueVector vector, Type prestoType)
     {
         if (vector instanceof VarCharVector) {
             return buildBlockFromVarCharVector((VarCharVector) vector, prestoType);
