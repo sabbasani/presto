@@ -24,13 +24,12 @@ import org.apache.arrow.flight.FlightStream;
 import org.apache.arrow.flight.Ticket;
 import org.apache.arrow.vector.FieldVector;
 import org.apache.arrow.vector.VectorSchemaRoot;
-import org.apache.arrow.vector.dictionary.Dictionary;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
-import static com.facebook.plugin.arrow.ArrowErrorCode.ARROW_FLIGHT_ERROR;
+import static com.facebook.plugin.arrow.ArrowErrorCode.ARROW_FLIGHT_CLIENT_ERROR;
 
 public class ArrowPageSource
         implements ConnectorPageSource
@@ -40,7 +39,7 @@ public class ArrowPageSource
     private final List<ArrowColumnHandle> columnHandles;
     private boolean completed;
     private int currentPosition;
-    private Optional<VectorSchemaRoot> vectorSchemaRoot = Optional.empty();
+    private VectorSchemaRoot vectorSchemaRoot;
     private ArrowFlightClient flightClient;
     private FlightStream flightStream;
 
@@ -61,7 +60,7 @@ public class ArrowPageSource
             flightStream = flightClient.getFlightClient().getStream(new Ticket(ticket), clientHandler.getCallOptions(connectorSession));
         }
         catch (FlightRuntimeException e) {
-            throw new ArrowException(ARROW_FLIGHT_ERROR, e.getMessage(), e);
+            throw new ArrowException(ARROW_FLIGHT_CLIENT_ERROR, e.getMessage(), e);
         }
     }
 
@@ -98,50 +97,36 @@ public class ArrowPageSource
     @Override
     public Page getNextPage()
     {
-        if (vectorSchemaRoot.isPresent()) {
-            vectorSchemaRoot.get().close();
-            vectorSchemaRoot = Optional.empty();
-        }
-
         if (flightStream.next()) {
-            vectorSchemaRoot = Optional.ofNullable(flightStream.getRoot());
+            vectorSchemaRoot = flightStream.getRoot();
         }
-
-        if (!vectorSchemaRoot.isPresent()) {
+        else {
             completed = true;
-        }
-
-        if (isFinished()) {
             return null;
         }
 
-        currentPosition++;
+        currentPosition = currentPosition + 1;
 
         List<Block> blocks = new ArrayList<>();
         for (int columnIndex = 0; columnIndex < columnHandles.size(); columnIndex++) {
-            FieldVector vector = vectorSchemaRoot.get().getVector(columnIndex);
+            FieldVector vector = vectorSchemaRoot.getVector(columnIndex);
             Type type = columnHandles.get(columnIndex).getColumnType();
-
             boolean isDictionaryBlock = vector.getField().getDictionary() != null;
-            Dictionary dictionary = null;
-            if (isDictionaryBlock) {
-                dictionary = flightStream.getDictionaryProvider().lookup(vector.getField().getDictionary().getId());
-            }
-            Block block = null != dictionary ? ArrowPageUtils.buildBlockFromVector(vector, type, dictionary.getVector(), isDictionaryBlock) :
-                    ArrowPageUtils.buildBlockFromVector(vector, type, null, false);
+            Block block = ArrowPageUtils.buildBlockFromVector(vector, type, flightStream.getDictionaryProvider(), isDictionaryBlock);
             blocks.add(block);
         }
 
-        return new Page(vectorSchemaRoot.get().getRowCount(), blocks.toArray(new Block[0]));
+        return new Page(vectorSchemaRoot.getRowCount(), blocks.toArray(new Block[0]));
     }
 
     @Override
     public void close()
     {
-        if (vectorSchemaRoot.isPresent()) {
-            vectorSchemaRoot.get().close();
-            vectorSchemaRoot = Optional.empty();
+        if (vectorSchemaRoot != null) {
+            vectorSchemaRoot.close();
+            completed = true;
         }
+
         if (flightStream != null) {
             try {
                 flightStream.close();

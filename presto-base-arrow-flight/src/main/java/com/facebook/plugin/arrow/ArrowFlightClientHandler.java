@@ -27,7 +27,9 @@ import java.io.FileInputStream;
 import java.io.InputStream;
 import java.util.Optional;
 
-import static com.facebook.plugin.arrow.ArrowErrorCode.ARROW_FLIGHT_ERROR;
+import static com.facebook.plugin.arrow.ArrowErrorCode.ARROW_FLIGHT_CLIENT_ERROR;
+import static com.facebook.plugin.arrow.ArrowErrorCode.ARROW_FLIGHT_INFO_ERROR;
+import static java.util.Objects.requireNonNull;
 
 public abstract class ArrowFlightClientHandler
 {
@@ -76,7 +78,7 @@ public abstract class ArrowFlightClientHandler
             return new ArrowFlightClient(flightClient, trustedCertificate);
         }
         catch (Exception e) {
-            throw new ArrowException(ARROW_FLIGHT_ERROR, "The flight client could not be obtained." + ex.getMessage(), ex);
+            throw new ArrowException(ARROW_FLIGHT_CLIENT_ERROR, "The flight client could not be obtained." + e.getMessage(), e);
         }
     }
 
@@ -107,7 +109,7 @@ public abstract class ArrowFlightClientHandler
             return flightInfo;
         }
         catch (Exception e) {
-            throw new ArrowException(ARROW_FLIGHT_ERROR, "The flight information could not be obtained from the flight server." + e.getMessage(), e);
+            throw new ArrowException(ARROW_FLIGHT_INFO_ERROR, "The flight information could not be obtained from the flight server." + e.getMessage(), e);
         }
     }
 

@@ -61,6 +61,8 @@ import org.apache.arrow.vector.VarBinaryVector;
 import org.apache.arrow.vector.VarCharVector;
 import org.apache.arrow.vector.complex.ListVector;
 import org.apache.arrow.vector.complex.impl.UnionListReader;
+import org.apache.arrow.vector.dictionary.Dictionary;
+import org.apache.arrow.vector.dictionary.DictionaryProvider;
 import org.apache.arrow.vector.types.FloatingPointPrecision;
 import org.apache.arrow.vector.types.pojo.ArrowType;
 import org.apache.arrow.vector.util.JsonStringArrayList;
@@ -80,10 +82,11 @@ public class ArrowPageUtils
     {
     }
 
-    public static Block buildBlockFromVector(FieldVector vector, Type type, FieldVector dictionary, boolean isDictionaryVector)
+    public static Block buildBlockFromVector(FieldVector vector, Type type, DictionaryProvider dictionaryProvider, boolean isDictionaryVector)
     {
         if (isDictionaryVector) {
-            return buildBlockFromDictionaryVector(vector, dictionary);
+            Dictionary dictionary = dictionaryProvider.lookup(vector.getField().getDictionary().getId());
+            return buildBlockFromDictionaryVector(vector, dictionary.getVector());
         }
         else if (vector instanceof BitVector) {
             return buildBlockFromBitVector((BitVector) vector, type);

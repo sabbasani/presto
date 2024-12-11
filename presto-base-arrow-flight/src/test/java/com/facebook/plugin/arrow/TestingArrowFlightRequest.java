@@ -82,7 +82,7 @@ public class TestingArrowFlightRequest
             return jsonString.getBytes(StandardCharsets.UTF_8);
         }
         catch (JsonProcessingException e) {
-            throw new ArrowException(ArrowErrorCode.ARROW_FLIGHT_ERROR, "JSON request cannot be created.", e);
+            throw new ArrowException(ArrowErrorCode.ARROW_INTERNAL_ERROR, "JSON request cannot be created.", e);
         }
     }
 

@@ -38,10 +38,8 @@ import com.facebook.presto.spi.ConnectorTableLayoutResult;
 import com.facebook.presto.spi.ConnectorTableMetadata;
 import com.facebook.presto.spi.Constraint;
 import com.facebook.presto.spi.NotFoundException;
-import com.facebook.presto.spi.PrestoException;
 import com.facebook.presto.spi.SchemaTableName;
 import com.facebook.presto.spi.SchemaTablePrefix;
-import com.facebook.presto.spi.StandardErrorCode;
 import com.facebook.presto.spi.connector.ConnectorMetadata;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
@@ -58,7 +56,9 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 
-import static com.facebook.plugin.arrow.ArrowErrorCode.ARROW_FLIGHT_ERROR;
+import static com.facebook.plugin.arrow.ArrowErrorCode.ARROW_FLIGHT_METADATA_ERROR;
+import static com.facebook.plugin.arrow.ArrowErrorCode.ARROW_FLIGHT_TYPE_ERROR;
+import static com.facebook.presto.common.Utils.checkArgument;
 import static java.util.Objects.requireNonNull;
 
 public abstract class AbstractArrowMetadata
@@ -82,7 +82,7 @@ public abstract class AbstractArrowMetadata
             case DOUBLE:
                 return DoubleType.DOUBLE;
             default:
-                throw new ArrowException(ARROW_FLIGHT_ERROR, "Invalid floating point precision " + floatingPoint.getPrecision());
+                throw new ArrowException(ARROW_FLIGHT_TYPE_ERROR, "Unexpected floating point precision " + floatingPoint.getPrecision());
         }
     }
 
@@ -98,7 +98,7 @@ public abstract class AbstractArrowMetadata
             case 8:
                 return TinyintType.TINYINT;
             default:
-                throw new ArrowException(ARROW_FLIGHT_ERROR, "Invalid bit width " + intType.getBitWidth());
+                throw new ArrowException(ARROW_FLIGHT_TYPE_ERROR, "Unexpected bit width " + intType.getBitWidth());
         }
     }
 
@@ -166,7 +166,7 @@ public abstract class AbstractArrowMetadata
             return fields;
         }
         catch (Exception e) {
-            throw new ArrowException(ARROW_FLIGHT_ERROR, "The table columns could not be listed for the table " + table, e);
+            throw new ArrowException(ARROW_FLIGHT_METADATA_ERROR, "The table columns could not be listed for the table " + table, e);
         }
     }
 
@@ -194,12 +194,9 @@ public abstract class AbstractArrowMetadata
     @Override
     public List<ConnectorTableLayoutResult> getTableLayouts(ConnectorSession session, ConnectorTableHandle table, Constraint<ColumnHandle> constraint, Optional<Set<ColumnHandle>> desiredColumns)
     {
-        if (!(table instanceof ArrowTableHandle)) {
-            throw new PrestoException(
-                    StandardErrorCode.INVALID_CAST_ARGUMENT,
-                    "Invalid table handle: Expected an instance of ArrowTableHandle but received "
-                            + table.getClass().getSimpleName());
-        }
+        checkArgument(table instanceof ArrowTableHandle,
+                "Invalid table handle: Expected an instance of ArrowTableHandle but received "
+                        + table.getClass().getSimpleName());
 
         ArrowTableHandle tableHandle = (ArrowTableHandle) table;
 
@@ -258,10 +255,10 @@ public abstract class AbstractArrowMetadata
                 columns.put(tableName, getTableMetadata(session, tableHandle).getColumns());
             }
             catch (ClassCastException | NotFoundException e) {
-                throw new ArrowException(ARROW_FLIGHT_ERROR, "The table columns could not be listed for the table " + tableName, e);
+                throw new ArrowException(ARROW_FLIGHT_METADATA_ERROR, "The table columns could not be listed for the table " + tableName, e);
             }
             catch (Exception e) {
-                throw new ArrowException(ARROW_FLIGHT_ERROR, e.getMessage(), e);
+                throw new ArrowException(ARROW_FLIGHT_METADATA_ERROR, e.getMessage(), e);
             }
         }
         return columns.build();

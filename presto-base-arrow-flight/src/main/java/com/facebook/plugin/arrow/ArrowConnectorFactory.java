@@ -30,7 +30,7 @@ import com.google.inject.Module;
 
 import java.util.Map;
 
-import static com.facebook.plugin.arrow.ArrowErrorCode.ARROW_FLIGHT_ERROR;
+import static com.facebook.plugin.arrow.ArrowErrorCode.ARROW_INTERNAL_ERROR;
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Strings.isNullOrEmpty;
 import static com.google.common.base.Throwables.throwIfUnchecked;
@@ -88,7 +88,7 @@ public class ArrowConnectorFactory
             return injector.getInstance(ArrowConnector.class);
         }
         catch (ConfigurationException ex) {
-            throw new ArrowException(ARROW_FLIGHT_ERROR, "The connector instance could not be created.", ex);
+            throw new ArrowException(ARROW_INTERNAL_ERROR, "The connector instance could not be created.", ex);
         }
         catch (Exception e) {
             throwIfUnchecked(e);
