@@ -58,7 +58,7 @@ import java.util.Set;
 
 import static com.facebook.plugin.arrow.ArrowErrorCode.ARROW_FLIGHT_METADATA_ERROR;
 import static com.facebook.plugin.arrow.ArrowErrorCode.ARROW_FLIGHT_TYPE_ERROR;
-import static com.facebook.presto.common.Utils.checkArgument;
+import static com.google.common.base.Preconditions.checkArgument;
 import static java.util.Objects.requireNonNull;
 
 public abstract class AbstractArrowMetadata
@@ -195,8 +195,10 @@ public abstract class AbstractArrowMetadata
     public List<ConnectorTableLayoutResult> getTableLayouts(ConnectorSession session, ConnectorTableHandle table, Constraint<ColumnHandle> constraint, Optional<Set<ColumnHandle>> desiredColumns)
     {
         checkArgument(table instanceof ArrowTableHandle,
-                "Invalid table handle: Expected an instance of ArrowTableHandle but received "
-                        + table.getClass().getSimpleName());
+                "Invalid table handle: Expected an instance of ArrowTableHandle but received %",
+                table.getClass().getSimpleName());
+        checkArgument(desiredColumns.orElse(Collections.emptySet()).stream().allMatch(f -> f instanceof ArrowColumnHandle),
+                "Invalid column handles: Expected desired columns to be of type ArrowColumnHandle");
 
         ArrowTableHandle tableHandle = (ArrowTableHandle) table;
 
