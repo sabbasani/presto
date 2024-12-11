@@ -15,7 +15,6 @@
         <air.main.basedir>${project.parent.basedir}</air.main.basedir>
         <dep.okhttp.version>4.10.0</dep.okhttp.version>
         <arrow.version>17.0.0</arrow.version>
-        <netty.version>4.1.110.Final</netty.version>
         <kotlin.version>1.6.20</kotlin.version>
         <error_prone_annotations.version>2.28.0</error_prone_annotations.version>
         <perfmark-api.version>0.27.0</perfmark-api.version>
@@ -242,49 +241,49 @@
             <dependency>
                 <groupId>io.netty</groupId>
                 <artifactId>netty-transport-native-unix-common</artifactId>
-                <version>${netty.version}</version>
+                <version>${dep.netty.version}</version>
             </dependency>
 
             <dependency>
                 <groupId>io.netty</groupId>
                 <artifactId>netty-common</artifactId>
-                <version>${netty.version}</version>
+                <version>${dep.netty.version}</version>
             </dependency>
 
             <dependency>
                 <groupId>io.netty</groupId>
                 <artifactId>netty-buffer</artifactId>
-                <version>${netty.version}</version>
+                <version>${dep.netty.version}</version>
             </dependency>
 
             <dependency>
                 <groupId>io.netty</groupId>
                 <artifactId>netty-handler</artifactId>
-                <version>${netty.version}</version>
+                <version>${dep.netty.version}</version>
             </dependency>
 
             <dependency>
                 <groupId>io.netty</groupId>
                 <artifactId>netty-transport</artifactId>
-                <version>${netty.version}</version>
+                <version>${dep.netty.version}</version>
             </dependency>
 
             <dependency>
                 <groupId>io.netty</groupId>
                 <artifactId>netty-codec</artifactId>
-                <version>${netty.version}</version>
+                <version>${dep.netty.version}</version>
             </dependency>
 
             <dependency>
                 <groupId>io.netty</groupId>
                 <artifactId>netty-handler-proxy</artifactId>
-                <version>${netty.version}</version>
+                <version>${dep.netty.version}</version>
             </dependency>
 
             <dependency>
                 <groupId>io.netty</groupId>
                 <artifactId>netty-codec-http</artifactId>
-                <version>${netty.version}</version>
+                <version>${dep.netty.version}</version>
             </dependency>
 
             <dependency>
