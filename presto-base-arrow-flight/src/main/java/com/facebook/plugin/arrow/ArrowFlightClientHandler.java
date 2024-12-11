@@ -89,7 +89,7 @@ public abstract class ArrowFlightClientHandler
         }
     }
 
-    protected abstract CredentialCallOption getCallOptions(ConnectorSession connectorSession);
+    protected abstract CredentialCallOption[] getCallOptions(ConnectorSession connectorSession);
 
     public ArrowFlightConfig getConfig()
     {
@@ -104,7 +104,7 @@ public abstract class ArrowFlightClientHandler
     public FlightInfo getFlightInfo(FlightDescriptor flightDescriptor, ConnectorSession connectorSession)
     {
         try (ArrowFlightClient client = getClient(Optional.empty())) {
-            CredentialCallOption auth = this.getCallOptions(connectorSession);
+            CredentialCallOption[] auth = this.getCallOptions(connectorSession);
             FlightInfo flightInfo = client.getFlightClient().getInfo(flightDescriptor, auth);
             return flightInfo;
         }

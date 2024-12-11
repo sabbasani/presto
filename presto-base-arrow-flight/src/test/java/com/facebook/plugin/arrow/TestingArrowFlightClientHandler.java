@@ -29,8 +29,8 @@ public class TestingArrowFlightClientHandler
     }
 
     @Override
-    protected CredentialCallOption getCallOptions(ConnectorSession connectorSession)
+    protected CredentialCallOption[] getCallOptions(ConnectorSession connectorSession)
     {
-        return new CredentialCallOption(new BearerCredentialWriter(null));
+        return new CredentialCallOption[]{new CredentialCallOption(new BearerCredentialWriter(null))};
     }
 }
