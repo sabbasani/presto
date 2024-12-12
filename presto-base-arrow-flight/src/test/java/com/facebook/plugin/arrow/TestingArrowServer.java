@@ -117,9 +117,7 @@ public class TestingArrowServer
                                 vectorLoader = new VectorLoader(newRoot);
                                 serverStreamListener.start(newRoot);
                             }
-                            if (vectorLoader != null) {
-                                vectorLoader.load(batch);
-                            }
+                            vectorLoader.load(batch);
                             serverStreamListener.putNext();
                         }
                     }
