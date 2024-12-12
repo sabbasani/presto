@@ -111,7 +111,7 @@ public class ArrowPageSource
         for (int columnIndex = 0; columnIndex < columnHandles.size(); columnIndex++) {
             FieldVector vector = vectorSchemaRoot.getVector(columnIndex);
             Type type = columnHandles.get(columnIndex).getColumnType();
-            Block block = ArrowPageUtils.buildBlockFromFieldVector(vector, type, flightStream.getDictionaryProvider());
+            Block block = ArrowPageUtils.buildBlockFromVector(vector, type, flightStream.getDictionaryProvider());
             blocks.add(block);
         }
 
