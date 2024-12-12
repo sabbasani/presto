@@ -182,6 +182,18 @@ public class ArrowPageUtils
         else if (arrowType instanceof ArrowType.Decimal) {
             return DecimalType.createDecimalType();
         }
+        else if (arrowType instanceof ArrowType.Timestamp) {
+            return TimestampType.TIMESTAMP;
+        }
+        else if (arrowType instanceof ArrowType.Date) {
+            return DateType.DATE;
+        }
+        else if (arrowType instanceof ArrowType.Time) {
+            return TimeType.TIME;
+        }
+        else if (arrowType instanceof ArrowType.LargeUtf8) {
+            return VarcharType.VARCHAR;
+        }
         throw new UnsupportedOperationException("Unsupported ArrowType: " + arrowType);
     }
 
