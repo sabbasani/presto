@@ -52,7 +52,7 @@ public class TestArrowFlightDictionaryQueries
         allocator = new RootAllocator(Long.MAX_VALUE);
         serverLocation = Location.forGrpcTls("127.0.0.1", 9443);
 
-        server = FlightServer.builder(allocator, serverLocation, new TestArrowFlightServerDictionary(allocator))
+        server = FlightServer.builder(allocator, serverLocation, new TestingArrowServerUsingDictionaryVector(allocator))
                 .useTls(certChainFile, privateKeyFile)
                 .build();
 
@@ -71,14 +71,13 @@ public class TestArrowFlightDictionaryQueries
     public void close()
             throws InterruptedException
     {
-        // allocator.close();
+        allocator.close();
         server.close();
         arrowFlightQueryRunner.close();
     }
 
     @Test
-    public void testShowCharColumns()
-
+    public void testDictionaryBlock()
     {
         // Retrieve the actual result from the query
         MaterializedResult actual = computeActual("SELECT shipmode, orderkey FROM lineitem");
@@ -86,10 +85,10 @@ public class TestArrowFlightDictionaryQueries
         assertEquals(actual.getRowCount(), 3);
         // Now, validate each row
         MaterializedResult expectedParametrizedVarchar = resultBuilder(getSession(), createVarcharType(10), BigintType.BIGINT)
-                .row("apple", 0)
-                .row("banana", 1)
-                .row("cherry", 2)
+                .row("apple", 0L)
+                .row("banana", 1L)
+                .row("cherry", 2L)
                 .build();
-        //assertTrue(actual.equals(expectedParametrizedVarchar));
+        assertEquals(expectedParametrizedVarchar, actual);
     }
 }
