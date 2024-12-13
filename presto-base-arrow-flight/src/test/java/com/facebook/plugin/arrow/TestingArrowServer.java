@@ -65,7 +65,7 @@ public class TestingArrowServer
 {
     private final RootAllocator allocator;
     private final ObjectMapper objectMapper = new ObjectMapper();
-    private static Connection connection;
+    private final Connection connection;
     private static final Logger logger = Logger.get(TestingArrowServer.class);
 
     public TestingArrowServer(RootAllocator allocator) throws Exception

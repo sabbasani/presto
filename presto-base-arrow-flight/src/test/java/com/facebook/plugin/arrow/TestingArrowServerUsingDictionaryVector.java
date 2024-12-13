@@ -63,7 +63,7 @@ public class TestingArrowServerUsingDictionaryVector
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final Connection connection;
 
-    private static final Logger logger = Logger.get(TestingArrowServer.class);
+    private static final Logger logger = Logger.get(TestingArrowServerUsingDictionaryVector.class);
 
     public TestingArrowServerUsingDictionaryVector(RootAllocator allocator)
             throws Exception
