@@ -14,20 +14,7 @@
 package com.facebook.plugin.arrow;
 
 import com.facebook.airlift.log.Logger;
-import com.facebook.presto.common.type.BigintType;
-import com.facebook.presto.common.type.BooleanType;
-import com.facebook.presto.common.type.DateType;
-import com.facebook.presto.common.type.DecimalType;
-import com.facebook.presto.common.type.DoubleType;
-import com.facebook.presto.common.type.IntegerType;
-import com.facebook.presto.common.type.RealType;
-import com.facebook.presto.common.type.SmallintType;
-import com.facebook.presto.common.type.TimeType;
-import com.facebook.presto.common.type.TimestampType;
-import com.facebook.presto.common.type.TinyintType;
 import com.facebook.presto.common.type.Type;
-import com.facebook.presto.common.type.VarbinaryType;
-import com.facebook.presto.common.type.VarcharType;
 import com.facebook.presto.spi.ColumnHandle;
 import com.facebook.presto.spi.ColumnMetadata;
 import com.facebook.presto.spi.ConnectorSession;
@@ -44,7 +31,6 @@ import com.facebook.presto.spi.connector.ConnectorMetadata;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import org.apache.arrow.flight.FlightDescriptor;
-import org.apache.arrow.vector.types.pojo.ArrowType;
 import org.apache.arrow.vector.types.pojo.Field;
 import org.apache.arrow.vector.types.pojo.Schema;
 
@@ -57,7 +43,6 @@ import java.util.Optional;
 import java.util.Set;
 
 import static com.facebook.plugin.arrow.ArrowErrorCode.ARROW_FLIGHT_METADATA_ERROR;
-import static com.facebook.plugin.arrow.ArrowErrorCode.ARROW_FLIGHT_TYPE_ERROR;
 import static com.google.common.base.Preconditions.checkArgument;
 import static java.util.Objects.requireNonNull;
 
@@ -67,71 +52,13 @@ public abstract class AbstractArrowMetadata
     private static final Logger logger = Logger.get(AbstractArrowMetadata.class);
     private final ArrowFlightConfig config;
     private final ArrowFlightClientHandler clientHandler;
+    private final ArrowBlockBuilder arrowBlockBuilder;
 
-    public AbstractArrowMetadata(ArrowFlightConfig config, ArrowFlightClientHandler clientHandler)
+    public AbstractArrowMetadata(ArrowFlightConfig config, ArrowFlightClientHandler clientHandler, ArrowBlockBuilder arrowBlockBuilder)
     {
         this.config = requireNonNull(config, "config is null");
         this.clientHandler = requireNonNull(clientHandler, "clientHandler is null");
-    }
-
-    private Type getPrestoTypeForArrowFloatingPointType(ArrowType.FloatingPoint floatingPoint)
-    {
-        switch (floatingPoint.getPrecision()) {
-            case SINGLE:
-                return RealType.REAL;
-            case DOUBLE:
-                return DoubleType.DOUBLE;
-            default:
-                throw new ArrowException(ARROW_FLIGHT_TYPE_ERROR, "Unexpected floating point precision " + floatingPoint.getPrecision());
-        }
-    }
-
-    private Type getPrestoTypeForArrowIntType(ArrowType.Int intType)
-    {
-        switch (intType.getBitWidth()) {
-            case 64:
-                return BigintType.BIGINT;
-            case 32:
-                return IntegerType.INTEGER;
-            case 16:
-                return SmallintType.SMALLINT;
-            case 8:
-                return TinyintType.TINYINT;
-            default:
-                throw new ArrowException(ARROW_FLIGHT_TYPE_ERROR, "Unexpected bit width " + intType.getBitWidth());
-        }
-    }
-
-    protected Type getPrestoTypeFromArrowField(Field field)
-    {
-        switch (field.getType().getTypeID()) {
-            case Int:
-                ArrowType.Int intType = (ArrowType.Int) field.getType();
-                return getPrestoTypeForArrowIntType(intType);
-            case Binary:
-            case LargeBinary:
-            case FixedSizeBinary:
-                return VarbinaryType.VARBINARY;
-            case Date:
-                return DateType.DATE;
-            case Timestamp:
-                return TimestampType.TIMESTAMP;
-            case Utf8:
-            case LargeUtf8:
-                return VarcharType.VARCHAR;
-            case FloatingPoint:
-                ArrowType.FloatingPoint floatingPoint = (ArrowType.FloatingPoint) field.getType();
-                return getPrestoTypeForArrowFloatingPointType(floatingPoint);
-            case Decimal:
-                ArrowType.Decimal decimalType = (ArrowType.Decimal) field.getType();
-                return DecimalType.createDecimalType(decimalType.getPrecision(), decimalType.getScale());
-            case Bool:
-                return BooleanType.BOOLEAN;
-            case Time:
-                return TimeType.TIME;
-            default:
-                throw new UnsupportedOperationException("The data type " + field.getType().getTypeID() + " is not supported.");
-        }
+        this.arrowBlockBuilder = requireNonNull(arrowBlockBuilder, "arrowPageBuilder is null");
     }
 
     protected abstract FlightDescriptor getFlightDescriptor(Optional<String> query, String schema, String table);
@@ -264,5 +191,10 @@ public abstract class AbstractArrowMetadata
             }
         }
         return columns.build();
+    }
+
+    private Type getPrestoTypeFromArrowField(Field field)
+    {
+        return arrowBlockBuilder.getPrestoTypeFromArrowField(field);
     }
 }

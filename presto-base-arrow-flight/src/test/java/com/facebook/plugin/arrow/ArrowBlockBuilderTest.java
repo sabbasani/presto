@@ -13,6 +13,7 @@
  */
 package com.facebook.plugin.arrow;
 
+import com.facebook.airlift.log.Logger;
 import com.facebook.presto.common.block.Block;
 import com.facebook.presto.common.block.BlockBuilder;
 import com.facebook.presto.common.block.DictionaryBlock;
@@ -59,23 +60,25 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 
-import static com.facebook.plugin.arrow.ArrowPageUtils.buildBlockFromDictionaryVector;
 import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertNotNull;
 import static org.testng.Assert.assertTrue;
 
-public class ArrowPageUtilsTest
+public class ArrowBlockBuilderTest
 {
+    private static final Logger logger = Logger.get(ArrowBlockBuilderTest.class);
     private static final int DICTIONARY_LENGTH = 10;
     private static final int VECTOR_LENGTH = 50;
     private BufferAllocator allocator;
+    private ArrowBlockBuilder arrowBlockBuilder;
 
     @BeforeClass
     public void setUp()
     {
         // Initialize the Arrow allocator
         allocator = new RootAllocator(Integer.MAX_VALUE);
-        System.out.println("Allocator initialized: " + allocator);
+        logger.debug("Allocator initialized: %s", allocator);
+        arrowBlockBuilder = new ArrowBlockBuilder();
     }
 
     @Test
@@ -92,7 +95,7 @@ public class ArrowPageUtilsTest
         bitVector.setValueCount(3);
 
         // Build the block from the vector
-        Block resultBlock = ArrowPageUtils.buildBlockFromBitVector(bitVector, BooleanType.BOOLEAN);
+        Block resultBlock = arrowBlockBuilder.buildBlockFromBitVector(bitVector, BooleanType.BOOLEAN);
 
         // Now verify the result block
         assertEquals(3, resultBlock.getPositionCount());  // Should have 3 positions
@@ -112,7 +115,7 @@ public class ArrowPageUtilsTest
         tinyIntVector.setValueCount(3);
 
         // Build the block from the vector
-        Block resultBlock = ArrowPageUtils.buildBlockFromTinyIntVector(tinyIntVector, TinyintType.TINYINT);
+        Block resultBlock = arrowBlockBuilder.buildBlockFromTinyIntVector(tinyIntVector, TinyintType.TINYINT);
 
         // Now verify the result block
         assertEquals(3, resultBlock.getPositionCount());  // Should have 3 positions
@@ -132,7 +135,7 @@ public class ArrowPageUtilsTest
         smallIntVector.setValueCount(3);
 
         // Build the block from the vector
-        Block resultBlock = ArrowPageUtils.buildBlockFromSmallIntVector(smallIntVector, SmallintType.SMALLINT);
+        Block resultBlock = arrowBlockBuilder.buildBlockFromSmallIntVector(smallIntVector, SmallintType.SMALLINT);
 
         // Now verify the result block
         assertEquals(3, resultBlock.getPositionCount());  // Should have 3 positions
@@ -152,7 +155,7 @@ public class ArrowPageUtilsTest
         intVector.setValueCount(3);
 
         // Build the block from the vector
-        Block resultBlock = ArrowPageUtils.buildBlockFromIntVector(intVector, IntegerType.INTEGER);
+        Block resultBlock = arrowBlockBuilder.buildBlockFromIntVector(intVector, IntegerType.INTEGER);
 
         // Now verify the result block
         assertEquals(3, resultBlock.getPositionCount());  // Should have 3 positions
@@ -176,7 +179,7 @@ public class ArrowPageUtilsTest
         bigIntVector.setValueCount(3);
 
         // Build the block from the vector
-        Block resultBlock = ArrowPageUtils.buildBlockFromBigIntVector(bigIntVector, BigintType.BIGINT);
+        Block resultBlock = arrowBlockBuilder.buildBlockFromBigIntVector(bigIntVector, BigintType.BIGINT);
 
         // Now verify the result block
         assertEquals(10L, resultBlock.getInt(0));  // The 1st element should be 10L
@@ -195,7 +198,7 @@ public class ArrowPageUtilsTest
         decimalVector.setValueCount(2);
 
         // Build the block from the vector
-        Block resultBlock = ArrowPageUtils.buildBlockFromDecimalVector(decimalVector, DecimalType.createDecimalType(10, 2));
+        Block resultBlock = arrowBlockBuilder.buildBlockFromDecimalVector(decimalVector, DecimalType.createDecimalType(10, 2));
 
         // Now verify the result block
         assertEquals(2, resultBlock.getPositionCount());  // Should have 2 positions
@@ -215,7 +218,7 @@ public class ArrowPageUtilsTest
         timestampMicroVector.setValueCount(3);
 
         // Build the block from the vector
-        Block resultBlock = ArrowPageUtils.buildBlockFromTimeStampMicroVector(timestampMicroVector, TimestampType.TIMESTAMP);
+        Block resultBlock = arrowBlockBuilder.buildBlockFromTimeStampMicroVector(timestampMicroVector, TimestampType.TIMESTAMP);
 
         // Now verify the result block
         assertEquals(3, resultBlock.getPositionCount());  // Should have 3 positions
@@ -253,7 +256,7 @@ public class ArrowPageUtilsTest
             ArrayType arrayType = new ArrayType(IntegerType.INTEGER);
 
             // Call the method to test
-            Block block = ArrowPageUtils.buildBlockFromListVector(listVector, arrayType);
+            Block block = arrowBlockBuilder.buildBlockFromListVector(listVector, arrayType);
 
             // Validate the result
             assertEquals(block.getPositionCount(), 4); // 4 lists in the block
@@ -286,7 +289,7 @@ public class ArrowPageUtilsTest
         BaseIntVector encodedVector = (BaseIntVector) DictionaryEncoder.encode(rawVector, dictionary);
 
         // Process the dictionary vector
-        Block result = buildBlockFromDictionaryVector(encodedVector, dictionary.getVector());
+        Block result = arrowBlockBuilder.buildBlockFromDictionaryVector(encodedVector, dictionary.getVector());
 
         // Verify the result
         assertNotNull(result, "The BlockBuilder should not be null.");
@@ -317,7 +320,7 @@ public class ArrowPageUtilsTest
         indicesVector.set(3, 2); // Third index points to "cherry"
         indicesVector.setValueCount(4);
         // Call the method under test
-        Block block = buildBlockFromDictionaryVector(indicesVector, dictionaryVector);
+        Block block = arrowBlockBuilder.buildBlockFromDictionaryVector(indicesVector, dictionaryVector);
 
         // Assertions to check the dictionary block's behavior
         assertNotNull(block);
@@ -370,7 +373,7 @@ public class ArrowPageUtilsTest
         dictionaryVector.setValueCount(3);
 
         // Call the method under test
-        Block block = buildBlockFromDictionaryVector(indicesVector, dictionaryVector);
+        Block block = arrowBlockBuilder.buildBlockFromDictionaryVector(indicesVector, dictionaryVector);
 
         // Assertions to check the dictionary block's behavior
         assertNotNull(block);
@@ -420,7 +423,7 @@ public class ArrowPageUtilsTest
         dictionaryVector.setValueCount(3);
 
         // Call the method under test
-        Block block = buildBlockFromDictionaryVector(indicesVector, dictionaryVector);
+        Block block = arrowBlockBuilder.buildBlockFromDictionaryVector(indicesVector, dictionaryVector);
 
         // Assertions to check the dictionary block's behavior
         assertNotNull(block);
@@ -470,7 +473,7 @@ public class ArrowPageUtilsTest
         dictionaryVector.setValueCount(3);
 
         // Call the method under test
-        Block block = buildBlockFromDictionaryVector(indicesVector, dictionaryVector);
+        Block block = arrowBlockBuilder.buildBlockFromDictionaryVector(indicesVector, dictionaryVector);
 
         // Assertions to check the dictionary block's behavior
         assertNotNull(block);
@@ -504,7 +507,7 @@ public class ArrowPageUtilsTest
         BlockBuilder builder = varcharType.createBlockBuilder(null, 1);
 
         String value = "test_string";
-        ArrowPageUtils.writeVarcharType(varcharType, builder, value);
+        arrowBlockBuilder.writeVarcharType(varcharType, builder, value);
 
         Block block = builder.build();
         Slice result = varcharType.getSlice(block, 0);
@@ -518,7 +521,7 @@ public class ArrowPageUtilsTest
         BlockBuilder builder = smallintType.createBlockBuilder(null, 1);
 
         short value = 42;
-        ArrowPageUtils.writeSmallintType(smallintType, builder, value);
+        arrowBlockBuilder.writeSmallintType(smallintType, builder, value);
 
         Block block = builder.build();
         long result = smallintType.getLong(block, 0);
@@ -532,7 +535,7 @@ public class ArrowPageUtilsTest
         BlockBuilder builder = tinyintType.createBlockBuilder(null, 1);
 
         byte value = 7;
-        ArrowPageUtils.writeTinyintType(tinyintType, builder, value);
+        arrowBlockBuilder.writeTinyintType(tinyintType, builder, value);
 
         Block block = builder.build();
         long result = tinyintType.getLong(block, 0);
@@ -546,7 +549,7 @@ public class ArrowPageUtilsTest
         BlockBuilder builder = bigintType.createBlockBuilder(null, 1);
 
         long value = 123456789L;
-        ArrowPageUtils.writeBigintType(bigintType, builder, value);
+        arrowBlockBuilder.writeBigintType(bigintType, builder, value);
 
         Block block = builder.build();
         long result = bigintType.getLong(block, 0);
@@ -560,7 +563,7 @@ public class ArrowPageUtilsTest
         BlockBuilder builder = integerType.createBlockBuilder(null, 1);
 
         int value = 42;
-        ArrowPageUtils.writeIntegerType(integerType, builder, value);
+        arrowBlockBuilder.writeIntegerType(integerType, builder, value);
 
         Block block = builder.build();
         long result = integerType.getLong(block, 0);
@@ -574,7 +577,7 @@ public class ArrowPageUtilsTest
         BlockBuilder builder = doubleType.createBlockBuilder(null, 1);
 
         double value = 42.42;
-        ArrowPageUtils.writeDoubleType(doubleType, builder, value);
+        arrowBlockBuilder.writeDoubleType(doubleType, builder, value);
 
         Block block = builder.build();
         double result = doubleType.getDouble(block, 0);
@@ -588,7 +591,7 @@ public class ArrowPageUtilsTest
         BlockBuilder builder = booleanType.createBlockBuilder(null, 1);
 
         boolean value = true;
-        ArrowPageUtils.writeBooleanType(booleanType, builder, value);
+        arrowBlockBuilder.writeBooleanType(booleanType, builder, value);
 
         Block block = builder.build();
         boolean result = booleanType.getBoolean(block, 0);
@@ -603,7 +606,7 @@ public class ArrowPageUtilsTest
         BlockBuilder builder = arrayType.createBlockBuilder(null, 1);
 
         List<Integer> values = Arrays.asList(1, 2, 3);
-        ArrowPageUtils.writeArrayType(arrayType, builder, values);
+        arrowBlockBuilder.writeArrayType(arrayType, builder, values);
 
         Block block = builder.build();
         Block arrayBlock = arrayType.getObject(block, 0);
@@ -622,7 +625,7 @@ public class ArrowPageUtilsTest
         BlockBuilder builder = rowType.createBlockBuilder(null, 1);
 
         List<Object> rowValues = Arrays.asList(42, "test");
-        ArrowPageUtils.writeRowType(rowType, builder, rowValues);
+        arrowBlockBuilder.writeRowType(rowType, builder, rowValues);
 
         Block block = builder.build();
         Block rowBlock = rowType.getObject(block, 0);
@@ -637,7 +640,7 @@ public class ArrowPageUtilsTest
         BlockBuilder builder = dateType.createBlockBuilder(null, 1);
 
         LocalDate value = LocalDate.of(2020, 1, 1);
-        ArrowPageUtils.writeDateType(dateType, builder, value);
+        arrowBlockBuilder.writeDateType(dateType, builder, value);
 
         Block block = builder.build();
         long result = dateType.getLong(block, 0);
@@ -651,7 +654,7 @@ public class ArrowPageUtilsTest
         BlockBuilder builder = timestampType.createBlockBuilder(null, 1);
 
         long value = 1609459200000L; // Jan 1, 2021, 00:00:00 UTC
-        ArrowPageUtils.writeTimestampType(timestampType, builder, value);
+        arrowBlockBuilder.writeTimestampType(timestampType, builder, value);
 
         Block block = builder.build();
         long result = timestampType.getLong(block, 0);
@@ -666,7 +669,7 @@ public class ArrowPageUtilsTest
 
         java.sql.Timestamp timestamp = java.sql.Timestamp.valueOf("2021-01-01 00:00:00");
         long expectedMillis = timestamp.getTime();
-        ArrowPageUtils.writeTimestampType(timestampType, builder, timestamp);
+        arrowBlockBuilder.writeTimestampType(timestampType, builder, timestamp);
 
         Block block = builder.build();
         long result = timestampType.getLong(block, 0);
@@ -680,7 +683,7 @@ public class ArrowPageUtilsTest
         BlockBuilder builder = shortDecimalType.createBlockBuilder(null, 1);
 
         BigDecimal decimalValue = new BigDecimal("12345.67");
-        ArrowPageUtils.writeDecimalType(shortDecimalType, builder, decimalValue);
+        arrowBlockBuilder.writeDecimalType(shortDecimalType, builder, decimalValue);
 
         Block block = builder.build();
         long unscaledValue = shortDecimalType.getLong(block, 0); // Unscaled value: 1234567
@@ -695,7 +698,7 @@ public class ArrowPageUtilsTest
         DecimalType longDecimalType = DecimalType.createDecimalType(38, 10);
         BlockBuilder builder = longDecimalType.createBlockBuilder(null, 1);
         BigDecimal decimalValue = new BigDecimal("1234567890.1234567890");
-        ArrowPageUtils.writeDecimalType(longDecimalType, builder, decimalValue);
+        arrowBlockBuilder.writeDecimalType(longDecimalType, builder, decimalValue);
         // Build the block after inserting the decimal value
         Block block = builder.build();
         Slice unscaledSlice = longDecimalType.getSlice(block, 0);

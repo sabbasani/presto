@@ -37,17 +37,23 @@ public class ArrowPageSource
     private static final Logger logger = Logger.get(ArrowPageSource.class);
     private final ArrowSplit split;
     private final List<ArrowColumnHandle> columnHandles;
+    private final ArrowBlockBuilder arrowBlockBuilder;
     private boolean completed;
     private int currentPosition;
     private VectorSchemaRoot vectorSchemaRoot;
     private ArrowFlightClient flightClient;
     private FlightStream flightStream;
 
-    public ArrowPageSource(ArrowSplit split, List<ArrowColumnHandle> columnHandles, ArrowFlightClientHandler clientHandler,
-            ConnectorSession connectorSession)
+    public ArrowPageSource(
+            ArrowSplit split,
+            List<ArrowColumnHandle> columnHandles,
+            ArrowFlightClientHandler clientHandler,
+            ConnectorSession connectorSession,
+            ArrowBlockBuilder arrowBlockBuilder)
     {
         this.columnHandles = columnHandles;
         this.split = split;
+        this.arrowBlockBuilder = arrowBlockBuilder;
         getFlightStream(clientHandler, split.getTicket(), connectorSession);
     }
 
@@ -111,7 +117,7 @@ public class ArrowPageSource
         for (int columnIndex = 0; columnIndex < columnHandles.size(); columnIndex++) {
             FieldVector vector = vectorSchemaRoot.getVector(columnIndex);
             Type type = columnHandles.get(columnIndex).getColumnType();
-            Block block = ArrowPageUtils.buildBlockFromFieldVector(vector, type, flightStream.getDictionaryProvider());
+            Block block = arrowBlockBuilder.buildBlockFromFieldVector(vector, type, flightStream.getDictionaryProvider());
             blocks.add(block);
         }
 

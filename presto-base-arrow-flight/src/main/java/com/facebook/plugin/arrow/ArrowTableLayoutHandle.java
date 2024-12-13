@@ -32,7 +32,8 @@ public class ArrowTableLayoutHandle
     private final TupleDomain<ColumnHandle> tupleDomain;
 
     @JsonCreator
-    public ArrowTableLayoutHandle(@JsonProperty("table") ArrowTableHandle table,
+    public ArrowTableLayoutHandle(
+            @JsonProperty("table") ArrowTableHandle table,
             @JsonProperty("columnHandles") List<ArrowColumnHandle> columnHandles,
             @JsonProperty("tupleDomain") TupleDomain<ColumnHandle> domain)
     {
