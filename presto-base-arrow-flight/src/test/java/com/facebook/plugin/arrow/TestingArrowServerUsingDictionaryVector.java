@@ -58,7 +58,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ThreadLocalRandom;
 
-public class TestArrowFlightServerDictionary
+public class TestingArrowServerUsingDictionaryVector
         implements FlightProducer
 {
     private static FlightServer server;
@@ -68,7 +68,7 @@ public class TestArrowFlightServerDictionary
 
     private static final Logger logger = Logger.get(TestingArrowServer.class);
 
-    public TestArrowFlightServerDictionary(RootAllocator allocator)
+    public TestingArrowServerUsingDictionaryVector(RootAllocator allocator)
             throws Exception
     {
         this.allocator = allocator;
