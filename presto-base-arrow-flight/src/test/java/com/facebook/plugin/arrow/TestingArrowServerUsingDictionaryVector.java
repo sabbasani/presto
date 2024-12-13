@@ -23,7 +23,6 @@ import org.apache.arrow.flight.FlightDescriptor;
 import org.apache.arrow.flight.FlightEndpoint;
 import org.apache.arrow.flight.FlightInfo;
 import org.apache.arrow.flight.FlightProducer;
-import org.apache.arrow.flight.FlightServer;
 import org.apache.arrow.flight.FlightStream;
 import org.apache.arrow.flight.PutResult;
 import org.apache.arrow.flight.Result;
@@ -44,7 +43,6 @@ import org.apache.arrow.vector.types.pojo.Field;
 import org.apache.arrow.vector.types.pojo.FieldType;
 import org.apache.arrow.vector.types.pojo.Schema;
 
-import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -61,10 +59,9 @@ import java.util.concurrent.ThreadLocalRandom;
 public class TestingArrowServerUsingDictionaryVector
         implements FlightProducer
 {
-    private static FlightServer server;
     private final RootAllocator allocator;
     private final ObjectMapper objectMapper = new ObjectMapper();
-    private static Connection connection;
+    private final Connection connection;
 
     private static final Logger logger = Logger.get(TestingArrowServer.class);
 
@@ -77,19 +74,9 @@ public class TestingArrowServerUsingDictionaryVector
         this.connection = DriverManager.getConnection(h2JdbcUrl, "sa", "");
     }
 
-    public static void stopServer()
-            throws IOException
-    {
-        if (server != null) {
-            server.shutdown();
-        }
-    }
-
     @Override
     public void getStream(CallContext callContext, Ticket ticket, ServerStreamListener serverStreamListener)
     {
-        // Initialize a dummy dictionary vector
-        // Example: dictionary contains 3 string values
         VarCharVector dictionaryVector = new VarCharVector("dictionary", allocator);
         dictionaryVector.allocateNew(3); // allocating 3 elements in dictionary
 
@@ -108,46 +95,42 @@ public class TestingArrowServerUsingDictionaryVector
         Schema schema = new Schema(Arrays.asList(orderkey, shipmode));
 
         // Create a VectorSchemaRoot from the schema and vectors
-        VectorSchemaRoot schemaRoot = VectorSchemaRoot.create(schema, allocator);
+        try (VectorSchemaRoot schemaRoot = VectorSchemaRoot.create(schema, allocator)) {
+            schemaRoot.allocateNew();
 
-        schemaRoot.allocateNew();
+            BigIntVector orderkeyVector = (BigIntVector) schemaRoot.getVector("orderkey");
 
-        BigIntVector orderkeyVector = (BigIntVector) schemaRoot.getVector("orderkey");
+            orderkeyVector.allocateNew(3);
 
-        orderkeyVector.allocateNew(3);
+            for (int i = 0; i < 3; i++) {
+                orderkeyVector.setSafe(i, i);
+            }
+            orderkeyVector.setValueCount(3);
+            IntVector intFieldVector = (IntVector) schemaRoot.getVector("shipmode");
+            intFieldVector.allocateNew(3);
 
-        for (int i = 0; i < 3; i++) {
-            orderkeyVector.setSafe(i, i);
+            for (int i = 0; i < 3; i++) {
+                intFieldVector.setSafe(i, i);
+            }
+            intFieldVector.setValueCount(3);
+
+            schemaRoot.setRowCount(3);
+
+            Dictionary dictionary = new Dictionary(dictionaryVector, new DictionaryEncoding(1L, false, index));
+            DictionaryProvider provider = new DictionaryProvider.MapDictionaryProvider(dictionary);
+            serverStreamListener.start(schemaRoot, provider);
+
+            serverStreamListener.putNext();
+
+            serverStreamListener.completed();
+            dictionaryVector.close();
         }
-        // Set the value count
-        orderkeyVector.setValueCount(3);
-        // Access the vector by name and populate it with data
-        IntVector intFieldVector = (IntVector) schemaRoot.getVector("shipmode");
-        intFieldVector.allocateNew(3);
-
-        for (int i = 0; i < 3; i++) {
-            intFieldVector.setSafe(i, i);
-        }
-        // Set the value count
-        intFieldVector.setValueCount(3);
-
-        // Set root's row count and print schema
-        schemaRoot.setRowCount(3);
-
-        Dictionary dictionary = new Dictionary(dictionaryVector, new DictionaryEncoding(1L, false, index));
-        DictionaryProvider provider = new DictionaryProvider.MapDictionaryProvider(dictionary);
-        serverStreamListener.start(schemaRoot, provider);
-
-        // Use ArrowStreamWriter to write the data to the client stream
-        serverStreamListener.putNext();
-
-        // Notify the listener that we have completed writing the stream
-        serverStreamListener.completed();
     }
 
     @Override
     public void listFlights(CallContext callContext, Criteria criteria, StreamListener<FlightInfo> streamListener)
     {
+        throw new UnsupportedOperationException("This operation is not supported");
     }
 
     @Override
