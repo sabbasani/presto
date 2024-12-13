@@ -37,7 +37,8 @@ public class ArrowConnector
     private final ArrowFlightClientHandler arrowFlightClientHandler;
 
     @Inject
-    public ArrowConnector(ConnectorMetadata metadata,
+    public ArrowConnector(
+            ConnectorMetadata metadata,
             ConnectorHandleResolver handleResolver,
             ConnectorSplitManager splitManager,
             ConnectorPageSourceProvider pageSourceProvider,

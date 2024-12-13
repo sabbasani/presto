@@ -14,10 +14,6 @@
 package com.facebook.plugin.arrow;
 
 import com.facebook.airlift.log.Logger;
-import com.facebook.presto.common.type.CharType;
-import com.facebook.presto.common.type.TimeType;
-import com.facebook.presto.common.type.Type;
-import com.facebook.presto.common.type.VarcharType;
 import com.facebook.presto.spi.ConnectorSession;
 import com.facebook.presto.spi.NodeManager;
 import com.facebook.presto.spi.SchemaTableName;
@@ -28,7 +24,6 @@ import com.google.common.collect.ImmutableList;
 import org.apache.arrow.flight.Action;
 import org.apache.arrow.flight.FlightDescriptor;
 import org.apache.arrow.flight.Result;
-import org.apache.arrow.vector.types.pojo.Field;
 
 import javax.inject.Inject;
 
@@ -52,9 +47,14 @@ public class TestingArrowMetadata
     private final ArrowFlightConfig config;
 
     @Inject
-    public TestingArrowMetadata(ArrowFlightClientHandler clientHandler, NodeManager nodeManager, TestingArrowFlightConfig testConfig, ArrowFlightConfig config)
+    public TestingArrowMetadata(
+            ArrowFlightClientHandler clientHandler,
+            NodeManager nodeManager,
+            TestingArrowFlightConfig testConfig,
+            ArrowFlightConfig config,
+            ArrowBlockBuilder arrowBlockBuilder)
     {
-        super(config, clientHandler);
+        super(config, clientHandler, arrowBlockBuilder);
         this.nodeManager = nodeManager;
         this.testConfig = testConfig;
         this.clientHandler = clientHandler;
@@ -107,28 +107,6 @@ public class TestingArrowMetadata
         }
         catch (IOException | InterruptedException e) {
             throw new RuntimeException(e);
-        }
-    }
-
-    @Override
-    protected Type getPrestoTypeFromArrowField(Field field)
-    {
-        String columnLength = field.getMetadata().get("columnLength");
-        int length = columnLength != null ? Integer.parseInt(columnLength) : 0;
-
-        String nativeType = field.getMetadata().get("columnNativeType");
-
-        if ("CHAR".equals(nativeType) || "CHARACTER".equals(nativeType)) {
-            return CharType.createCharType(length);
-        }
-        else if ("VARCHAR".equals(nativeType)) {
-            return VarcharType.createVarcharType(length);
-        }
-        else if ("TIME".equals(nativeType)) {
-            return TimeType.TIME;
-        }
-        else {
-            return super.getPrestoTypeFromArrowField(field);
         }
     }
 

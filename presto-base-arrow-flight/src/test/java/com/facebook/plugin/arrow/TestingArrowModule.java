@@ -31,5 +31,6 @@ public class TestingArrowModule
         binder.bind(ConnectorSplitManager.class).to(TestingArrowSplitManager.class).in(Scopes.SINGLETON);
         binder.bind(ArrowFlightClientHandler.class).to(TestingArrowFlightClientHandler.class).in(Scopes.SINGLETON);
         binder.bind(ConnectorMetadata.class).to(TestingArrowMetadata.class).in(Scopes.SINGLETON);
+        binder.bind(ArrowBlockBuilder.class).to(TestingArrowPageBuilder.class).in(Scopes.SINGLETON);
     }
 }

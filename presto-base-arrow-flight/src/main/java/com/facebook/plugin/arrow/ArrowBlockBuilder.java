@@ -63,8 +63,8 @@ import org.apache.arrow.vector.complex.ListVector;
 import org.apache.arrow.vector.complex.impl.UnionListReader;
 import org.apache.arrow.vector.dictionary.Dictionary;
 import org.apache.arrow.vector.dictionary.DictionaryProvider;
-import org.apache.arrow.vector.types.FloatingPointPrecision;
 import org.apache.arrow.vector.types.pojo.ArrowType;
+import org.apache.arrow.vector.types.pojo.Field;
 import org.apache.arrow.vector.util.JsonStringArrayList;
 
 import java.math.BigDecimal;
@@ -74,15 +74,12 @@ import java.time.LocalTime;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
+import static com.facebook.plugin.arrow.ArrowErrorCode.ARROW_FLIGHT_TYPE_ERROR;
 import static java.util.Objects.requireNonNull;
 
-public class ArrowPageUtils
+public class ArrowBlockBuilder
 {
-    private ArrowPageUtils()
-    {
-    }
-
-    public static Block buildBlockFromFieldVector(FieldVector vector, Type type, DictionaryProvider dictionaryProvider)
+    public Block buildBlockFromFieldVector(FieldVector vector, Type type, DictionaryProvider dictionaryProvider)
     {
         if (vector.getField().getDictionary() != null) {
             Dictionary dictionary = dictionaryProvider.lookup(vector.getField().getDictionary().getId());
@@ -93,13 +90,13 @@ public class ArrowPageUtils
         }
     }
 
-    public static Block buildBlockFromDictionaryVector(FieldVector fieldVector, FieldVector dictionaryVector)
+    public Block buildBlockFromDictionaryVector(FieldVector fieldVector, FieldVector dictionaryVector)
     {
         // Validate inputs
         requireNonNull(fieldVector, "encoded vector is null");
         requireNonNull(dictionaryVector, "dictionary vector is null");
 
-        Type prestoType = getPrestoTypeFromArrowType(dictionaryVector.getField().getType());
+        Type prestoType = getPrestoTypeFromArrowField(dictionaryVector.getField());
 
         Block dictionaryblock = buildBlockFromValueVector(dictionaryVector, prestoType);
 
@@ -107,7 +104,67 @@ public class ArrowPageUtils
         return getDictionaryBlock(fieldVector, dictionaryblock);
     }
 
-    private static DictionaryBlock getDictionaryBlock(FieldVector fieldVector, Block dictionaryblock)
+    protected Type getPrestoTypeFromArrowField(Field field)
+    {
+        switch (field.getType().getTypeID()) {
+            case Int:
+                ArrowType.Int intType = (ArrowType.Int) field.getType();
+                return getPrestoTypeForArrowIntType(intType);
+            case Binary:
+            case LargeBinary:
+            case FixedSizeBinary:
+                return VarbinaryType.VARBINARY;
+            case Date:
+                return DateType.DATE;
+            case Timestamp:
+                return TimestampType.TIMESTAMP;
+            case Utf8:
+            case LargeUtf8:
+                return VarcharType.VARCHAR;
+            case FloatingPoint:
+                ArrowType.FloatingPoint floatingPoint = (ArrowType.FloatingPoint) field.getType();
+                return getPrestoTypeForArrowFloatingPointType(floatingPoint);
+            case Decimal:
+                ArrowType.Decimal decimalType = (ArrowType.Decimal) field.getType();
+                return DecimalType.createDecimalType(decimalType.getPrecision(), decimalType.getScale());
+            case Bool:
+                return BooleanType.BOOLEAN;
+            case Time:
+                return TimeType.TIME;
+            default:
+                throw new UnsupportedOperationException("The data type " + field.getType().getTypeID() + " is not supported.");
+        }
+    }
+
+    private Type getPrestoTypeForArrowFloatingPointType(ArrowType.FloatingPoint floatingPoint)
+    {
+        switch (floatingPoint.getPrecision()) {
+            case SINGLE:
+                return RealType.REAL;
+            case DOUBLE:
+                return DoubleType.DOUBLE;
+            default:
+                throw new ArrowException(ARROW_FLIGHT_TYPE_ERROR, "Unexpected floating point precision " + floatingPoint.getPrecision());
+        }
+    }
+
+    private Type getPrestoTypeForArrowIntType(ArrowType.Int intType)
+    {
+        switch (intType.getBitWidth()) {
+            case 64:
+                return BigintType.BIGINT;
+            case 32:
+                return IntegerType.INTEGER;
+            case 16:
+                return SmallintType.SMALLINT;
+            case 8:
+                return TinyintType.TINYINT;
+            default:
+                throw new ArrowException(ARROW_FLIGHT_TYPE_ERROR, "Unexpected bit width " + intType.getBitWidth());
+        }
+    }
+
+    private DictionaryBlock getDictionaryBlock(FieldVector fieldVector, Block dictionaryblock)
     {
         if (fieldVector instanceof IntVector) {
             // Get the Arrow indices vector
@@ -142,62 +199,7 @@ public class ArrowPageUtils
         }
     }
 
-    private static Type getPrestoTypeFromArrowType(ArrowType arrowType)
-    {
-        if (arrowType instanceof ArrowType.Utf8) {
-            return VarcharType.VARCHAR;
-        }
-        else if (arrowType instanceof ArrowType.Int) {
-            ArrowType.Int intType = (ArrowType.Int) arrowType;
-            if (intType.getBitWidth() == 8 || intType.getBitWidth() == 16 || intType.getBitWidth() == 32) {
-                return IntegerType.INTEGER;
-            }
-            else if (intType.getBitWidth() == 64) {
-                return BigintType.BIGINT;
-            }
-            else {
-                throw new UnsupportedOperationException("Unsupported int bit width: " + intType.getBitWidth());
-            }
-        }
-        else if (arrowType instanceof ArrowType.FloatingPoint) {
-            ArrowType.FloatingPoint fpType = (ArrowType.FloatingPoint) arrowType;
-            FloatingPointPrecision precision = fpType.getPrecision();
-
-            if (precision == FloatingPointPrecision.SINGLE) { // 32-bit float
-                return RealType.REAL;
-            }
-            else if (precision == FloatingPointPrecision.DOUBLE) { // 64-bit float
-                return DoubleType.DOUBLE;
-            }
-            else {
-                throw new UnsupportedOperationException("Unsupported FloatingPoint precision: " + precision);
-            }
-        }
-        else if (arrowType instanceof ArrowType.Bool) {
-            return BooleanType.BOOLEAN;
-        }
-        else if (arrowType instanceof ArrowType.Binary) {
-            return VarbinaryType.VARBINARY;
-        }
-        else if (arrowType instanceof ArrowType.Decimal) {
-            return DecimalType.createDecimalType();
-        }
-        else if (arrowType instanceof ArrowType.Timestamp) {
-            return TimestampType.TIMESTAMP;
-        }
-        else if (arrowType instanceof ArrowType.Date) {
-            return DateType.DATE;
-        }
-        else if (arrowType instanceof ArrowType.Time) {
-            return TimeType.TIME;
-        }
-        else if (arrowType instanceof ArrowType.LargeUtf8) {
-            return VarcharType.VARCHAR;
-        }
-        throw new UnsupportedOperationException("Unsupported ArrowType: " + arrowType);
-    }
-
-    private static Block buildBlockFromValueVector(ValueVector vector, Type type)
+    private Block buildBlockFromValueVector(ValueVector vector, Type type)
     {
         if (vector instanceof BitVector) {
             return buildBlockFromBitVector((BitVector) vector, type);
@@ -275,7 +277,7 @@ public class ArrowPageUtils
         }
     }
 
-    public static Block buildBlockFromTimeMilliTZVector(TimeStampMilliTZVector vector, Type type)
+    public Block buildBlockFromTimeMilliTZVector(TimeStampMilliTZVector vector, Type type)
     {
         if (!(type instanceof TimestampType)) {
             throw new IllegalArgumentException("Type must be a TimestampType for TimeStampMilliTZVector");
@@ -294,7 +296,7 @@ public class ArrowPageUtils
         return builder.build();
     }
 
-    public static Block buildBlockFromBitVector(BitVector vector, Type type)
+    public Block buildBlockFromBitVector(BitVector vector, Type type)
     {
         BlockBuilder builder = type.createBlockBuilder(null, vector.getValueCount());
         for (int i = 0; i < vector.getValueCount(); i++) {
@@ -308,7 +310,7 @@ public class ArrowPageUtils
         return builder.build();
     }
 
-    public static Block buildBlockFromIntVector(IntVector vector, Type type)
+    public Block buildBlockFromIntVector(IntVector vector, Type type)
     {
         BlockBuilder builder = type.createBlockBuilder(null, vector.getValueCount());
         for (int i = 0; i < vector.getValueCount(); i++) {
@@ -322,7 +324,7 @@ public class ArrowPageUtils
         return builder.build();
     }
 
-    public static Block buildBlockFromSmallIntVector(SmallIntVector vector, Type type)
+    public Block buildBlockFromSmallIntVector(SmallIntVector vector, Type type)
     {
         BlockBuilder builder = type.createBlockBuilder(null, vector.getValueCount());
         for (int i = 0; i < vector.getValueCount(); i++) {
@@ -336,7 +338,7 @@ public class ArrowPageUtils
         return builder.build();
     }
 
-    public static Block buildBlockFromTinyIntVector(TinyIntVector vector, Type type)
+    public Block buildBlockFromTinyIntVector(TinyIntVector vector, Type type)
     {
         BlockBuilder builder = type.createBlockBuilder(null, vector.getValueCount());
         for (int i = 0; i < vector.getValueCount(); i++) {
@@ -350,7 +352,7 @@ public class ArrowPageUtils
         return builder.build();
     }
 
-    public static Block buildBlockFromBigIntVector(BigIntVector vector, Type type)
+    public Block buildBlockFromBigIntVector(BigIntVector vector, Type type)
     {
         BlockBuilder builder = type.createBlockBuilder(null, vector.getValueCount());
         for (int i = 0; i < vector.getValueCount(); i++) {
@@ -364,7 +366,7 @@ public class ArrowPageUtils
         return builder.build();
     }
 
-    public static Block buildBlockFromDecimalVector(DecimalVector vector, Type type)
+    public Block buildBlockFromDecimalVector(DecimalVector vector, Type type)
     {
         if (!(type instanceof DecimalType)) {
             throw new IllegalArgumentException("Type must be a DecimalType for DecimalVector");
@@ -391,7 +393,7 @@ public class ArrowPageUtils
         return builder.build();
     }
 
-    public static Block buildBlockFromNullVector(NullVector vector, Type type)
+    public Block buildBlockFromNullVector(NullVector vector, Type type)
     {
         BlockBuilder builder = type.createBlockBuilder(null, vector.getValueCount());
         for (int i = 0; i < vector.getValueCount(); i++) {
@@ -400,7 +402,7 @@ public class ArrowPageUtils
         return builder.build();
     }
 
-    public static Block buildBlockFromTimeStampMicroVector(TimeStampMicroVector vector, Type type)
+    public Block buildBlockFromTimeStampMicroVector(TimeStampMicroVector vector, Type type)
     {
         if (!(type instanceof TimestampType)) {
             throw new IllegalArgumentException("Expected TimestampType but got " + type.getClass().getName());
@@ -420,7 +422,7 @@ public class ArrowPageUtils
         return builder.build();
     }
 
-    public static Block buildBlockFromTimeStampMilliVector(TimeStampMilliVector vector, Type type)
+    public Block buildBlockFromTimeStampMilliVector(TimeStampMilliVector vector, Type type)
     {
         if (!(type instanceof TimestampType)) {
             throw new IllegalArgumentException("Expected TimestampType but got " + type.getClass().getName());
@@ -439,7 +441,7 @@ public class ArrowPageUtils
         return builder.build();
     }
 
-    public static Block buildBlockFromFloat8Vector(Float8Vector vector, Type type)
+    public Block buildBlockFromFloat8Vector(Float8Vector vector, Type type)
     {
         BlockBuilder builder = type.createBlockBuilder(null, vector.getValueCount());
         for (int i = 0; i < vector.getValueCount(); i++) {
@@ -453,7 +455,7 @@ public class ArrowPageUtils
         return builder.build();
     }
 
-    public static Block buildBlockFromFloat4Vector(Float4Vector vector, Type type)
+    public Block buildBlockFromFloat4Vector(Float4Vector vector, Type type)
     {
         BlockBuilder builder = type.createBlockBuilder(null, vector.getValueCount());
         for (int i = 0; i < vector.getValueCount(); i++) {
@@ -468,7 +470,7 @@ public class ArrowPageUtils
         return builder.build();
     }
 
-    public static Block buildBlockFromVarBinaryVector(VarBinaryVector vector, Type type)
+    public Block buildBlockFromVarBinaryVector(VarBinaryVector vector, Type type)
     {
         BlockBuilder builder = type.createBlockBuilder(null, vector.getValueCount());
         for (int i = 0; i < vector.getValueCount(); i++) {
@@ -483,7 +485,7 @@ public class ArrowPageUtils
         return builder.build();
     }
 
-    public static Block buildBlockFromVarCharVector(VarCharVector vector, Type type)
+    public Block buildBlockFromVarCharVector(VarCharVector vector, Type type)
     {
         if (!(type instanceof VarcharType)) {
             throw new IllegalArgumentException("Expected VarcharType but got " + type.getClass().getName());
@@ -502,7 +504,7 @@ public class ArrowPageUtils
         return builder.build();
     }
 
-    public static Block buildBlockFromDateDayVector(DateDayVector vector, Type type)
+    public Block buildBlockFromDateDayVector(DateDayVector vector, Type type)
     {
         if (!(type instanceof DateType)) {
             throw new IllegalArgumentException("Expected DateType but got " + type.getClass().getName());
@@ -520,7 +522,7 @@ public class ArrowPageUtils
         return builder.build();
     }
 
-    public static Block buildBlockFromDateMilliVector(DateMilliVector vector, Type type)
+    public Block buildBlockFromDateMilliVector(DateMilliVector vector, Type type)
     {
         if (!(type instanceof DateType)) {
             throw new IllegalArgumentException("Expected DateType but got " + type.getClass().getName());
@@ -540,7 +542,7 @@ public class ArrowPageUtils
         return builder.build();
     }
 
-    public static Block buildBlockFromTimeSecVector(TimeSecVector vector, Type type)
+    public Block buildBlockFromTimeSecVector(TimeSecVector vector, Type type)
     {
         if (!(type instanceof TimeType)) {
             throw new IllegalArgumentException("Type must be a TimeType for TimeSecVector");
@@ -560,7 +562,7 @@ public class ArrowPageUtils
         return builder.build();
     }
 
-    public static Block buildBlockFromTimeMilliVector(TimeMilliVector vector, Type type)
+    public Block buildBlockFromTimeMilliVector(TimeMilliVector vector, Type type)
     {
         if (!(type instanceof TimeType)) {
             throw new IllegalArgumentException("Type must be a TimeType for TimeSecVector");
@@ -579,7 +581,7 @@ public class ArrowPageUtils
         return builder.build();
     }
 
-    public static Block buildBlockFromTimeMicroVector(TimeMicroVector vector, Type type)
+    public Block buildBlockFromTimeMicroVector(TimeMicroVector vector, Type type)
     {
         if (!(type instanceof TimeType)) {
             throw new IllegalArgumentException("Type must be a TimeType for TimemicroVector");
@@ -598,7 +600,7 @@ public class ArrowPageUtils
         return builder.build();
     }
 
-    public static Block buildBlockFromTimeStampSecVector(TimeStampSecVector vector, Type type)
+    public Block buildBlockFromTimeStampSecVector(TimeStampSecVector vector, Type type)
     {
         if (!(type instanceof TimestampType)) {
             throw new IllegalArgumentException("Type must be a TimestampType for TimeStampSecVector");
@@ -618,7 +620,7 @@ public class ArrowPageUtils
         return builder.build();
     }
 
-    public static Block buildCharTypeBlockFromVarcharVector(VarCharVector vector, Type type)
+    public Block buildCharTypeBlockFromVarcharVector(VarCharVector vector, Type type)
     {
         BlockBuilder builder = type.createBlockBuilder(null, vector.getValueCount());
         for (int i = 0; i < vector.getValueCount(); i++) {
@@ -633,7 +635,7 @@ public class ArrowPageUtils
         return builder.build();
     }
 
-    public static Block buildTimeTypeBlockFromVarcharVector(VarCharVector vector, Type type)
+    public Block buildTimeTypeBlockFromVarcharVector(VarCharVector vector, Type type)
     {
         BlockBuilder builder = type.createBlockBuilder(null, vector.getValueCount());
         for (int i = 0; i < vector.getValueCount(); i++) {
@@ -650,7 +652,7 @@ public class ArrowPageUtils
         return builder.build();
     }
 
-    public static Block buildBlockFromListVector(ListVector vector, Type type)
+    public Block buildBlockFromListVector(ListVector vector, Type type)
     {
         if (!(type instanceof ArrayType)) {
             throw new IllegalArgumentException("Type must be an ArrayType for ListVector");
@@ -684,7 +686,7 @@ public class ArrowPageUtils
         return arrayBuilder.build();
     }
 
-    public static void appendValueToBuilder(Type type, BlockBuilder builder, Object value)
+    public void appendValueToBuilder(Type type, BlockBuilder builder, Object value)
     {
         if (value == null) {
             builder.appendNull();
@@ -732,13 +734,13 @@ public class ArrowPageUtils
         }
     }
 
-    public static void writeVarcharType(Type type, BlockBuilder builder, Object value)
+    public void writeVarcharType(Type type, BlockBuilder builder, Object value)
     {
         Slice slice = Slices.utf8Slice(value.toString());
         type.writeSlice(builder, slice);
     }
 
-    public static void writeSmallintType(Type type, BlockBuilder builder, Object value)
+    public void writeSmallintType(Type type, BlockBuilder builder, Object value)
     {
         if (value instanceof Number) {
             type.writeLong(builder, ((Number) value).shortValue());
@@ -759,7 +761,7 @@ public class ArrowPageUtils
         }
     }
 
-    public static void writeTinyintType(Type type, BlockBuilder builder, Object value)
+    public void writeTinyintType(Type type, BlockBuilder builder, Object value)
     {
         if (value instanceof Number) {
             type.writeLong(builder, ((Number) value).byteValue());
@@ -780,7 +782,7 @@ public class ArrowPageUtils
         }
     }
 
-    public static void writeBigintType(Type type, BlockBuilder builder, Object value)
+    public void writeBigintType(Type type, BlockBuilder builder, Object value)
     {
         if (value instanceof Long) {
             type.writeLong(builder, (Long) value);
@@ -804,7 +806,7 @@ public class ArrowPageUtils
         }
     }
 
-    public static void writeIntegerType(Type type, BlockBuilder builder, Object value)
+    public void writeIntegerType(Type type, BlockBuilder builder, Object value)
     {
         if (value instanceof Integer) {
             type.writeLong(builder, (Integer) value);
@@ -825,7 +827,7 @@ public class ArrowPageUtils
         }
     }
 
-    public static void writeDoubleType(Type type, BlockBuilder builder, Object value)
+    public void writeDoubleType(Type type, BlockBuilder builder, Object value)
     {
         if (value instanceof Double) {
             type.writeDouble(builder, (Double) value);
@@ -849,7 +851,7 @@ public class ArrowPageUtils
         }
     }
 
-    public static void writeBooleanType(Type type, BlockBuilder builder, Object value)
+    public void writeBooleanType(Type type, BlockBuilder builder, Object value)
     {
         if (value instanceof Boolean) {
             type.writeBoolean(builder, (Boolean) value);
@@ -859,7 +861,7 @@ public class ArrowPageUtils
         }
     }
 
-    public static void writeDecimalType(DecimalType type, BlockBuilder builder, Object value)
+    public void writeDecimalType(DecimalType type, BlockBuilder builder, Object value)
     {
         if (value instanceof BigDecimal) {
             BigDecimal decimalValue = (BigDecimal) value;
@@ -888,7 +890,7 @@ public class ArrowPageUtils
         }
     }
 
-    public static void writeArrayType(ArrayType type, BlockBuilder builder, Object value)
+    public void writeArrayType(ArrayType type, BlockBuilder builder, Object value)
     {
         Type elementType = type.getElementType();
         BlockBuilder arrayBuilder = builder.beginBlockEntry();
@@ -898,7 +900,7 @@ public class ArrowPageUtils
         builder.closeEntry();
     }
 
-    public static void writeRowType(RowType type, BlockBuilder builder, Object value)
+    public void writeRowType(RowType type, BlockBuilder builder, Object value)
     {
         List<Object> rowValues = (List<Object>) value;
         BlockBuilder rowBuilder = builder.beginBlockEntry();
@@ -910,7 +912,7 @@ public class ArrowPageUtils
         builder.closeEntry();
     }
 
-    public static void writeDateType(Type type, BlockBuilder builder, Object value)
+    public void writeDateType(Type type, BlockBuilder builder, Object value)
     {
         if (value instanceof java.sql.Date || value instanceof java.time.LocalDate) {
             int daysSinceEpoch = (int) (value instanceof java.sql.Date
@@ -923,7 +925,7 @@ public class ArrowPageUtils
         }
     }
 
-    public static void writeTimestampType(Type type, BlockBuilder builder, Object value)
+    public void writeTimestampType(Type type, BlockBuilder builder, Object value)
     {
         if (value instanceof java.sql.Timestamp) {
             long millis = ((java.sql.Timestamp) value).getTime();

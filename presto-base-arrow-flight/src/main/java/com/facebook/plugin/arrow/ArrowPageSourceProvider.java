@@ -31,11 +31,14 @@ public class ArrowPageSourceProvider
         implements ConnectorPageSourceProvider
 {
     private static final Logger logger = Logger.get(ArrowPageSourceProvider.class);
-    private ArrowFlightClientHandler clientHandler;
+    private final ArrowFlightClientHandler clientHandler;
+    private final ArrowBlockBuilder arrowBlockBuilder;
+
     @Inject
-    public ArrowPageSourceProvider(ArrowFlightClientHandler clientHandler)
+    public ArrowPageSourceProvider(ArrowFlightClientHandler clientHandler, ArrowBlockBuilder arrowBlockBuilder)
     {
         this.clientHandler = clientHandler;
+        this.arrowBlockBuilder = arrowBlockBuilder;
     }
 
     @Override
@@ -47,6 +50,6 @@ public class ArrowPageSourceProvider
         }
         ArrowSplit arrowSplit = (ArrowSplit) split;
         logger.debug("Processing split with flight ticket");
-        return new ArrowPageSource(arrowSplit, columnHandles.build(), clientHandler, session);
+        return new ArrowPageSource(arrowSplit, columnHandles.build(), clientHandler, session, arrowBlockBuilder);
     }
 }
