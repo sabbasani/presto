@@ -34,9 +34,6 @@ import org.apache.arrow.vector.VarCharVector;
 import org.apache.arrow.vector.VectorSchemaRoot;
 import org.apache.arrow.vector.dictionary.Dictionary;
 import org.apache.arrow.vector.dictionary.DictionaryProvider;
-import org.apache.arrow.vector.types.DateUnit;
-import org.apache.arrow.vector.types.FloatingPointPrecision;
-import org.apache.arrow.vector.types.TimeUnit;
 import org.apache.arrow.vector.types.pojo.ArrowType;
 import org.apache.arrow.vector.types.pojo.DictionaryEncoding;
 import org.apache.arrow.vector.types.pojo.Field;
@@ -46,14 +43,10 @@ import org.apache.arrow.vector.types.pojo.Schema;
 import java.nio.charset.StandardCharsets;
 import java.sql.Connection;
 import java.sql.DriverManager;
-import java.sql.ResultSet;
-import java.sql.ResultSetMetaData;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.ThreadLocalRandom;
 
 public class TestingArrowServerUsingDictionaryVector
@@ -137,63 +130,11 @@ public class TestingArrowServerUsingDictionaryVector
     public FlightInfo getFlightInfo(CallContext callContext, FlightDescriptor flightDescriptor)
     {
         try {
-            String jsonRequest = new String(flightDescriptor.getCommand(), StandardCharsets.UTF_8);
-            JsonNode rootNode = objectMapper.readTree(jsonRequest);
+            Field shipmode = new Field("shipmode", FieldType.nullable(new ArrowType.Utf8()), null);
+            Field orderkey = new Field("orderkey", FieldType.nullable(new ArrowType.Int(64, true)), null);
 
-            String schemaName = rootNode.get("interactionProperties").get("schema_name").asText(null);
-            String tableName = rootNode.get("interactionProperties").get("table_name").asText(null);
-            String selectStatement = rootNode.get("interactionProperties").get("select_statement").asText(null);
+            Schema schema = new Schema(Arrays.asList(orderkey, shipmode));
 
-            List<Field> fields = new ArrayList<>();
-            if (schemaName != null && tableName != null) {
-                String query = "SELECT * FROM INFORMATION_SCHEMA.COLUMNS " +
-                        "WHERE TABLE_SCHEMA='" + schemaName.toUpperCase() + "' " +
-                        "AND TABLE_NAME='" + tableName.toUpperCase() + "'";
-
-                try (ResultSet rs = connection.createStatement().executeQuery(query)) {
-                    while (rs.next()) {
-                        String columnName = rs.getString("COLUMN_NAME");
-                        String dataType = rs.getString("TYPE_NAME");
-                        String charMaxLength = rs.getString("CHARACTER_MAXIMUM_LENGTH");
-                        int precision = rs.getInt("NUMERIC_PRECISION");
-                        int scale = rs.getInt("NUMERIC_SCALE");
-
-                        ArrowType arrowType = convertSqlTypeToArrowType(dataType, precision, scale);
-                        Map<String, String> metaDataMap = new HashMap<>();
-                        metaDataMap.put("columnNativeType", dataType);
-                        if (charMaxLength != null) {
-                            metaDataMap.put("columnLength", charMaxLength);
-                        }
-                        FieldType fieldType = new FieldType(true, arrowType, null, metaDataMap);
-                        Field field = new Field(columnName, fieldType, null);
-                        fields.add(field);
-                    }
-                }
-            }
-            else if (selectStatement != null) {
-                selectStatement = selectStatement.toUpperCase();
-                logger.info("Executing SELECT query: " + selectStatement);
-                try (ResultSet rs = connection.createStatement().executeQuery(selectStatement)) {
-                    ResultSetMetaData metaData = rs.getMetaData();
-                    int columnCount = metaData.getColumnCount();
-
-                    for (int i = 1; i <= columnCount; i++) {
-                        String columnName = metaData.getColumnName(i);
-                        String columnType = metaData.getColumnTypeName(i);
-                        int precision = metaData.getPrecision(i);
-                        int scale = metaData.getScale(i);
-
-                        ArrowType arrowType = convertSqlTypeToArrowType(columnType, precision, scale);
-                        Field field = new Field(columnName, FieldType.nullable(arrowType), null);
-                        fields.add(field);
-                    }
-                }
-            }
-            else {
-                throw new IllegalArgumentException("Either schema_name/table_name or select_statement must be provided.");
-            }
-
-            Schema schema = new Schema(fields);
             FlightEndpoint endpoint = new FlightEndpoint(new Ticket(flightDescriptor.getCommand()));
             return new FlightInfo(schema, flightDescriptor, Collections.singletonList(endpoint), -1, -1);
         }
@@ -218,17 +159,13 @@ public class TestingArrowServerUsingDictionaryVector
             String schemaName = rootNode.get("interactionProperties").get("schema_name").asText(null);
 
             String query;
+            List<String> names = new ArrayList<>();
             if (schemaName == null) {
-                query = "SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA";
+                names.add("TESTDB");
             }
             else {
                 schemaName = schemaName.toUpperCase();
-                query = "SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA='" + schemaName + "'";
-            }
-            ResultSet rs = connection.createStatement().executeQuery(query);
-            List<String> names = new ArrayList<>();
-            while (rs.next()) {
-                names.add(rs.getString(1));
+                names.add("LINEITEM");
             }
 
             String jsonResponse = objectMapper.writeValueAsString(names);
@@ -244,50 +181,5 @@ public class TestingArrowServerUsingDictionaryVector
     public void listActions(CallContext callContext, StreamListener<ActionType> streamListener)
     {
         throw new UnsupportedOperationException("This operation is not supported");
-    }
-
-    private ArrowType convertSqlTypeToArrowType(String sqlType, int precision, int scale)
-    {
-        switch (sqlType.toUpperCase()) {
-            case "VARCHAR":
-            case "CHAR":
-            case "CHARACTER VARYING":
-            case "CHARACTER":
-            case "CLOB":
-                return new ArrowType.Utf8();
-            case "INTEGER":
-            case "INT":
-                return new ArrowType.Int(32, true);
-            case "BIGINT":
-                return new ArrowType.Int(64, true);
-            case "SMALLINT":
-                return new ArrowType.Int(16, true);
-            case "TINYINT":
-                return new ArrowType.Int(8, true);
-            case "DOUBLE":
-            case "DOUBLE PRECISION":
-            case "FLOAT":
-                return new ArrowType.FloatingPoint(FloatingPointPrecision.DOUBLE);
-            case "REAL":
-                return new ArrowType.FloatingPoint(FloatingPointPrecision.SINGLE);
-            case "BOOLEAN":
-                return new ArrowType.Bool();
-            case "DATE":
-                return new ArrowType.Date(DateUnit.DAY);
-            case "TIMESTAMP":
-                return new ArrowType.Timestamp(TimeUnit.MILLISECOND, null);
-            case "TIME":
-                return new ArrowType.Time(TimeUnit.MILLISECOND, 32);
-            case "DECIMAL":
-            case "NUMERIC":
-                return new ArrowType.Decimal(precision, scale);
-            case "BINARY":
-            case "VARBINARY":
-                return new ArrowType.Binary();
-            case "NULL":
-                return new ArrowType.Null();
-            default:
-                throw new IllegalArgumentException("Unsupported SQL type: " + sqlType);
-        }
     }
 }

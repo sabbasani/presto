@@ -63,7 +63,7 @@ public class ArrowPageSource
         try {
             Optional<String> uri = (split.getLocationUrls().isEmpty()) ?
                     Optional.empty() : Optional.of(split.getLocationUrls().get(0));
-            flightClient = clientHandler.getClient(uri);
+            flightClient = uri.isPresent() ? clientHandler.createArrowFlightClient(uri.get()) : clientHandler.createArrowFlightClient(null);
             flightStream = flightClient.getFlightClient().getStream(new Ticket(ticket), clientHandler.getCallOptions(connectorSession));
         }
         catch (FlightRuntimeException e) {

@@ -88,7 +88,7 @@ public class TestingArrowMetadata
 
     public List<String> extractSchemaAndTableData(Optional<String> schema, ConnectorSession connectorSession)
     {
-        try (ArrowFlightClient client = clientHandler.getClient(Optional.empty())) {
+        try (ArrowFlightClient client = clientHandler.createArrowFlightClient(null)) {
             List<String> names = new ArrayList<>();
             TestingArrowFlightRequest request = getArrowFlightRequest(schema.orElse(null));
             ObjectNode rootNode = (ObjectNode) objectMapper.readTree(request.getCommand());
@@ -123,9 +123,9 @@ public class TestingArrowMetadata
     }
 
     @Override
-    protected FlightDescriptor getFlightDescriptor(Optional<String> query, String schema, String table)
+    protected FlightDescriptor getFlightDescriptor(String schema, String table)
     {
-        TestingArrowFlightRequest request = new TestingArrowFlightRequest(this.config, testConfig, schema, table, query, nodeManager.getWorkerNodes().size());
+        TestingArrowFlightRequest request = new TestingArrowFlightRequest(this.config, testConfig, schema, table, Optional.empty(), nodeManager.getWorkerNodes().size());
         return FlightDescriptor.command(request.getCommand());
     }
 

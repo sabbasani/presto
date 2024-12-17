@@ -13,7 +13,6 @@
  */
 package com.facebook.plugin.arrow;
 
-import com.facebook.airlift.log.Logger;
 import com.facebook.presto.spi.ConnectorSession;
 import com.facebook.presto.spi.ConnectorSplitSource;
 import com.facebook.presto.spi.ConnectorTableLayoutHandle;
@@ -31,12 +30,14 @@ import static java.util.Objects.requireNonNull;
 public abstract class AbstractArrowSplitManager
         implements ConnectorSplitManager
 {
-    private static final Logger logger = Logger.get(AbstractArrowSplitManager.class);
     private final AbstractArrowFlightClientHandler clientHandler;
 
-    public AbstractArrowSplitManager(AbstractArrowFlightClientHandler clientHandler)
+    private ArrowFlightConfig arrowFlightConfig;
+
+    public AbstractArrowSplitManager(AbstractArrowFlightClientHandler clientHandler, ArrowFlightConfig arrowFlightConfig)
     {
         this.clientHandler = requireNonNull(clientHandler, "clientHandler is null");
+        this.arrowFlightConfig = requireNonNull(arrowFlightConfig, "arrowFlightConfig is null");
     }
 
     protected abstract FlightDescriptor getFlightDescriptor(ArrowFlightConfig config, ArrowTableLayoutHandle tableLayoutHandle);
@@ -46,7 +47,7 @@ public abstract class AbstractArrowSplitManager
     {
         ArrowTableLayoutHandle tableLayoutHandle = (ArrowTableLayoutHandle) layout;
         ArrowTableHandle tableHandle = tableLayoutHandle.getTableHandle();
-        FlightDescriptor flightDescriptor = getFlightDescriptor(clientHandler.getConfig(),
+        FlightDescriptor flightDescriptor = getFlightDescriptor(arrowFlightConfig,
                 tableLayoutHandle);
 
         FlightInfo flightInfo = clientHandler.getFlightInfo(flightDescriptor, session);

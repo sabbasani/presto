@@ -13,7 +13,6 @@
  */
 package com.facebook.plugin.arrow;
 
-import com.facebook.airlift.log.Logger;
 import com.facebook.presto.spi.ConnectorSession;
 import org.apache.arrow.flight.FlightClient;
 import org.apache.arrow.flight.FlightDescriptor;
@@ -25,6 +24,7 @@ import org.apache.arrow.vector.types.pojo.Schema;
 
 import java.io.FileInputStream;
 import java.io.InputStream;
+import java.util.Objects;
 import java.util.Optional;
 
 import static com.facebook.plugin.arrow.ArrowErrorCode.ARROW_FLIGHT_CLIENT_ERROR;
@@ -33,7 +33,6 @@ import static java.util.Objects.requireNonNull;
 
 public abstract class AbstractArrowFlightClientHandler
 {
-    private static final Logger logger = Logger.get(AbstractArrowFlightClientHandler.class);
     private final ArrowFlightConfig config;
 
     private RootAllocator allocator;
@@ -43,14 +42,14 @@ public abstract class AbstractArrowFlightClientHandler
         this.config = requireNonNull(config, "config is null");
     }
 
-    private ArrowFlightClient initializeClient(Optional<String> uri)
+    private ArrowFlightClient initializeClient(String uri)
     {
         try {
             Optional<InputStream> trustedCertificate = Optional.empty();
 
             Location location;
-            if (uri.isPresent()) {
-                location = new Location(uri.get());
+            if (Objects.nonNull(uri)) {
+                location = new Location(uri);
             }
             else {
                 if (config.getArrowFlightServerSslEnabled() != null && !config.getArrowFlightServerSslEnabled()) {
@@ -91,19 +90,19 @@ public abstract class AbstractArrowFlightClientHandler
 
     protected abstract CredentialCallOption[] getCallOptions(ConnectorSession connectorSession);
 
-    public ArrowFlightConfig getConfig()
-    {
-        return config;
-    }
-
-    public ArrowFlightClient getClient(Optional<String> uri)
+    public ArrowFlightClient createArrowFlightClient(String uri)
     {
         return initializeClient(uri);
     }
 
+    public ArrowFlightClient createArrowFlightClient()
+    {
+        return initializeClient(null);
+    }
+
     public FlightInfo getFlightInfo(FlightDescriptor flightDescriptor, ConnectorSession connectorSession)
     {
-        try (ArrowFlightClient client = getClient(Optional.empty())) {
+        try (ArrowFlightClient client = createArrowFlightClient(null)) {
             CredentialCallOption[] auth = this.getCallOptions(connectorSession);
             FlightInfo flightInfo = client.getFlightClient().getInfo(flightDescriptor, auth);
             return flightInfo;
@@ -118,7 +117,7 @@ public abstract class AbstractArrowFlightClientHandler
         return getFlightInfo(flightDescriptor, connectorSession).getSchemaOptional();
     }
 
-    public void closeRootallocator()
+    public void closeRootAllocator()
     {
         if (null != allocator) {
             allocator.close();
