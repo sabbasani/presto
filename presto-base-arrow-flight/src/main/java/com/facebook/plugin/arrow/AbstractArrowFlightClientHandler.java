@@ -23,12 +23,14 @@ import org.apache.arrow.memory.RootAllocator;
 import org.apache.arrow.vector.types.pojo.Schema;
 
 import java.io.FileInputStream;
+import java.io.IOException;
 import java.io.InputStream;
 import java.util.Objects;
 import java.util.Optional;
 
 import static com.facebook.plugin.arrow.ArrowErrorCode.ARROW_FLIGHT_CLIENT_ERROR;
 import static com.facebook.plugin.arrow.ArrowErrorCode.ARROW_FLIGHT_INFO_ERROR;
+import static com.facebook.plugin.arrow.ArrowErrorCode.ARROW_FLIGHT_METADATA_ERROR;
 import static java.util.Objects.requireNonNull;
 
 public abstract class AbstractArrowFlightClientHandler
@@ -107,14 +109,20 @@ public abstract class AbstractArrowFlightClientHandler
             FlightInfo flightInfo = client.getFlightClient().getInfo(flightDescriptor, auth);
             return flightInfo;
         }
-        catch (Exception e) {
+        catch (InterruptedException | IOException e) {
             throw new ArrowException(ARROW_FLIGHT_INFO_ERROR, "The flight information could not be obtained from the flight server." + e.getMessage(), e);
         }
     }
 
-    public Optional<Schema> getSchema(FlightDescriptor flightDescriptor, ConnectorSession connectorSession)
+    public Schema getSchema(FlightDescriptor flightDescriptor, ConnectorSession connectorSession)
     {
-        return getFlightInfo(flightDescriptor, connectorSession).getSchemaOptional();
+        try (ArrowFlightClient client = createArrowFlightClient()) {
+            CredentialCallOption[] auth = this.getCallOptions(connectorSession);
+            return client.getFlightClient().getSchema(flightDescriptor, auth).getSchema();
+        }
+        catch (InterruptedException | IOException e) {
+            throw new ArrowException(ARROW_FLIGHT_METADATA_ERROR, "The flight information could not be obtained from the flight server." + e.getMessage(), e);
+        }
     }
 
     public void closeRootAllocator()

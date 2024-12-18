@@ -88,9 +88,8 @@ public abstract class AbstractArrowMetadata
             FlightDescriptor flightDescriptor = getFlightDescriptor(
                     dataSourceSpecificSchemaName, dataSourceSpecificTableName);
 
-            Optional<Schema> flightSchema = clientHandler.getSchema(flightDescriptor, connectorSession);
-            List<Field> fields = flightSchema.map(Schema::getFields).orElse(Collections.emptyList());
-            return fields;
+            Schema flightSchema = clientHandler.getSchema(flightDescriptor, connectorSession);
+            return flightSchema.getFields();
         }
         catch (Exception e) {
             throw new ArrowException(ARROW_FLIGHT_METADATA_ERROR, "The table columns could not be listed for the table " + table, e);
