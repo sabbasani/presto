@@ -64,7 +64,7 @@ public class TestArrowSplit
         // Test that the constructor correctly initializes fields
         assertEquals(arrowSplit.getSchemaName(), schemaName, "Schema name should match.");
         assertEquals(arrowSplit.getTableName(), tableName, "Table name should match.");
-        assertEquals(arrowSplit.getByteArray(), flightEndpoint.serialize().array(), "Byte array should match");
+        assertEquals(arrowSplit.getFlightEndpoint(), flightEndpoint.serialize().array(), "Byte array should match");
     }
 
     @Test

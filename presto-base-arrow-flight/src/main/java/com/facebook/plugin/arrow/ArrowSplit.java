@@ -36,7 +36,7 @@ public class ArrowSplit
     public ArrowSplit(
             @JsonProperty("schemaName") @Nullable String schemaName,
             @JsonProperty("tableName") String tableName,
-            @JsonProperty("byteArray") byte[] flightEndpoint)
+            @JsonProperty("flightEndpoint") byte[] flightEndpoint)
     {
         this.schemaName = schemaName;
         this.tableName = tableName;
@@ -74,7 +74,7 @@ public class ArrowSplit
     }
 
     @JsonProperty
-    public byte[] getByteArray()
+    public byte[] getFlightEndpoint()
     {
         return flightEndpoint;
     }

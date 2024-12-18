@@ -60,7 +60,7 @@ public class ArrowPageSource
         this.columnHandles = requireNonNull(columnHandles, "columnHandles is null");
         this.split = requireNonNull(split, "split is null");
         this.arrowBlockBuilder = requireNonNull(arrowBlockBuilder, "arrowBlockBuilder is null");
-        getFlightStream(clientHandler, getTicket(ByteBuffer.wrap(split.getByteArray())), connectorSession);
+        getFlightStream(clientHandler, getTicket(ByteBuffer.wrap(split.getFlightEndpoint())), connectorSession);
     }
 
     private byte[] getTicket(ByteBuffer byteArray)
@@ -76,7 +76,7 @@ public class ArrowPageSource
     private void getFlightStream(AbstractArrowFlightClientHandler clientHandler, byte[] ticket, ConnectorSession connectorSession)
     {
         try {
-            Optional<String> uri = getLocationUrls(ByteBuffer.wrap(split.getByteArray())).stream().findFirst();
+            Optional<String> uri = getLocationUrls(ByteBuffer.wrap(split.getFlightEndpoint())).stream().findFirst();
             flightClient = createArrowFlightClient(clientHandler, uri);
             flightStream = flightClient.getFlightClient().getStream(new Ticket(ticket), clientHandler.getCallOptions(connectorSession));
         }
