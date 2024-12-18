@@ -81,26 +81,26 @@ public class TestingH2DatabaseSetup
         Statement stmt = conn.createStatement();
 
         // Create schema
-        stmt.execute("CREATE SCHEMA IF NOT EXISTS testdb");
+        stmt.execute("CREATE SCHEMA IF NOT EXISTS tpch");
 
-        stmt.execute("CREATE TABLE testdb.member (" +
+        stmt.execute("CREATE TABLE tpch.member (" +
                 " id INTEGER PRIMARY KEY," +
                 " name VARCHAR(50)," +
                 " sex CHAR(1)," +
                 " state CHAR(5)" +
                 ")");
-        stmt.execute("INSERT INTO testdb.member VALUES(1, 'TOM', 'M', 'TMX  '),(2, 'MARY', 'F', 'CD    ')");
+        stmt.execute("INSERT INTO tpch.member VALUES(1, 'TOM', 'M', 'TMX  '),(2, 'MARY', 'F', 'CD    ')");
 
-        stmt.execute("CREATE TABLE testdb.event (" +
+        stmt.execute("CREATE TABLE tpch.event (" +
                 " id INTEGER PRIMARY KEY," +
                 " startDate DATE," +
                 " startTime TIME," +
                 " startTimestamp TIMESTAMP" +
                 ")");
-        stmt.execute("INSERT INTO testdb.event VALUES(1, DATE '2004-12-31', TIME '23:59:59'," +
+        stmt.execute("INSERT INTO tpch.event VALUES(1, DATE '2004-12-31', TIME '23:59:59'," +
                 " TIMESTAMP '2005-12-31 23:59:59')");
 
-        stmt.execute("CREATE TABLE testdb.orders (\n" +
+        stmt.execute("CREATE TABLE tpch.orders (\n" +
                 "  orderkey BIGINT PRIMARY KEY,\n" +
                 "  custkey BIGINT NOT NULL,\n" +
                 "  orderstatus VARCHAR(1) NOT NULL,\n" +
@@ -111,10 +111,10 @@ public class TestingH2DatabaseSetup
                 "  shippriority INTEGER NOT NULL,\n" +
                 "  comment VARCHAR(79) NOT NULL\n" +
                 ")");
-        stmt.execute("CREATE INDEX custkey_index ON testdb.orders (custkey)");
+        stmt.execute("CREATE INDEX custkey_index ON tpch.orders (custkey)");
         insertRows(tpchMetadata, ORDERS, handle);
 
-        handle.execute("CREATE TABLE testdb.lineitem (\n" +
+        handle.execute("CREATE TABLE tpch.lineitem (\n" +
                 "  orderkey BIGINT,\n" +
                 "  partkey BIGINT NOT NULL,\n" +
                 "  suppkey BIGINT NOT NULL,\n" +
@@ -135,7 +135,7 @@ public class TestingH2DatabaseSetup
                 ")");
         insertRows(tpchMetadata, LINE_ITEM, handle);
 
-        handle.execute(" CREATE TABLE testdb.partsupp (\n" +
+        handle.execute(" CREATE TABLE tpch.partsupp (\n" +
                 "  partkey BIGINT NOT NULL,\n" +
                 "  suppkey BIGINT NOT NULL,\n" +
                 "  availqty INTEGER NOT NULL,\n" +
@@ -145,7 +145,7 @@ public class TestingH2DatabaseSetup
                 ")");
         insertRows(tpchMetadata, PART_SUPPLIER, handle);
 
-        handle.execute("CREATE TABLE testdb.nation (\n" +
+        handle.execute("CREATE TABLE tpch.nation (\n" +
                 "  nationkey BIGINT PRIMARY KEY,\n" +
                 "  name VARCHAR(25) NOT NULL,\n" +
                 "  regionkey BIGINT NOT NULL,\n" +
@@ -153,13 +153,13 @@ public class TestingH2DatabaseSetup
                 ")");
         insertRows(tpchMetadata, NATION, handle);
 
-        handle.execute("CREATE TABLE testdb.region(\n" +
+        handle.execute("CREATE TABLE tpch.region(\n" +
                 "  regionkey BIGINT PRIMARY KEY,\n" +
                 "  name VARCHAR(25) NOT NULL,\n" +
                 "  comment VARCHAR(115) NOT NULL\n" +
                 ")");
         insertRows(tpchMetadata, REGION, handle);
-        handle.execute("CREATE TABLE testdb.part(\n" +
+        handle.execute("CREATE TABLE tpch.part(\n" +
                 "  partkey BIGINT PRIMARY KEY,\n" +
                 "  name VARCHAR(55) NOT NULL,\n" +
                 "  mfgr VARCHAR(25) NOT NULL,\n" +
@@ -171,7 +171,7 @@ public class TestingH2DatabaseSetup
                 "  comment VARCHAR(23) NOT NULL\n" +
                 ")");
         insertRows(tpchMetadata, PART, handle);
-        handle.execute(" CREATE TABLE testdb.customer (     \n" +
+        handle.execute(" CREATE TABLE tpch.customer (     \n" +
                 "    custkey BIGINT NOT NULL,         \n" +
                 "    name VARCHAR(25) NOT NULL,       \n" +
                 "    address VARCHAR(40) NOT NULL,    \n" +
@@ -182,7 +182,7 @@ public class TestingH2DatabaseSetup
                 "    comment VARCHAR(117) NOT NULL    \n" +
                 " ) ");
         insertRows(tpchMetadata, CUSTOMER, handle);
-        handle.execute(" CREATE TABLE testdb.supplier ( \n" +
+        handle.execute(" CREATE TABLE tpch.supplier ( \n" +
                 "    suppkey bigint NOT NULL,         \n" +
                 "    name varchar(25) NOT NULL,       \n" +
                 "    address varchar(40) NOT NULL,    \n" +
@@ -193,13 +193,13 @@ public class TestingH2DatabaseSetup
                 " ) ");
         insertRows(tpchMetadata, SUPPLIER, handle);
 
-        ResultSet resultSet1 = stmt.executeQuery("SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = 'TESTDB'");
+        ResultSet resultSet1 = stmt.executeQuery("SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = 'TPCH'");
         List<String> tables = new ArrayList<>();
         while (resultSet1.next()) {
             String tableName = resultSet1.getString("TABLE_NAME");
             tables.add(tableName);
         }
-        logger.info("Tables in 'testdb' schema: %s", tables.stream().collect(Collectors.joining(", ")));
+        logger.info("Tables in 'tpch' schema: %s", tables.stream().collect(Collectors.joining(", ")));
 
         ResultSet resultSet = stmt.executeQuery("SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA");
         List<String> schemas = new ArrayList<>();
@@ -222,7 +222,7 @@ public class TestingH2DatabaseSetup
                 .filter(columnMetadata -> !columnMetadata.isHidden())
                 .collect(toImmutableList());
 
-        String schemaName = "testdb";
+        String schemaName = "tpch";
         String tableNameWithSchema = schemaName + "." + tableMetadata.getTable().getTableName();
         String vars = Joiner.on(',').join(nCopies(columns.size(), "?"));
         String sql = format("INSERT INTO %s VALUES (%s)", tableNameWithSchema, vars);

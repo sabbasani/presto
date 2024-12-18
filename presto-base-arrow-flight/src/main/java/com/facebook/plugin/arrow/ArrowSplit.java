@@ -30,20 +30,17 @@ public class ArrowSplit
 {
     private final String schemaName;
     private final String tableName;
-    private final byte[] ticket;
-    private final List<String> locationUrls;
+    private final byte[] flightEndpoint;
 
     @JsonCreator
     public ArrowSplit(
             @JsonProperty("schemaName") @Nullable String schemaName,
             @JsonProperty("tableName") String tableName,
-            @JsonProperty("ticket") byte[] ticket,
-            @JsonProperty("locationUrls") List<String> locationUrls)
+            @JsonProperty("byteArray") byte[] flightEndpoint)
     {
         this.schemaName = schemaName;
         this.tableName = tableName;
-        this.ticket = ticket;
-        this.locationUrls = locationUrls;
+        this.flightEndpoint = flightEndpoint;
     }
 
     @Override
@@ -77,14 +74,8 @@ public class ArrowSplit
     }
 
     @JsonProperty
-    public byte[] getTicket()
+    public byte[] getByteArray()
     {
-        return ticket;
-    }
-
-    @JsonProperty
-    public List<String> getLocationUrls()
-    {
-        return locationUrls;
+        return flightEndpoint;
     }
 }

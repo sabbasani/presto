@@ -15,10 +15,16 @@ package com.facebook.plugin.arrow;
 
 import com.facebook.presto.spi.HostAddress;
 import com.facebook.presto.spi.schedule.NodeSelectionStrategy;
+import org.apache.arrow.flight.FlightEndpoint;
+import org.apache.arrow.flight.Location;
+import org.apache.arrow.flight.Ticket;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
-import java.util.Arrays;
+import java.io.IOException;
+import java.net.URISyntaxException;
+import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.List;
 
 import static org.testng.Assert.assertEquals;
@@ -31,29 +37,34 @@ public class TestArrowSplit
     private ArrowSplit arrowSplit;
     private String schemaName;
     private String tableName;
-    private byte[] ticket;
-    private List<String> locationUrls;
+    private byte[] ticketArray;
+    private FlightEndpoint flightEndpoint;
 
     @BeforeMethod
     public void setUp()
+            throws URISyntaxException
     {
         schemaName = "testSchema";
         tableName = "testTable";
-        ticket = new byte[] {1, 2, 3, 4};
-        locationUrls = Arrays.asList("http://localhost:8080", "http://localhost:8081");
+        ticketArray = new byte[] {1, 2, 3, 4};
 
+        List<Location> list = new ArrayList<>();
+        Location location = new Location("http://localhost:8080");
+        list.add(location);
+        Ticket ticket = new Ticket(ByteBuffer.wrap(ticketArray).array());  // Wrap the byte array in a Ticket
+        flightEndpoint = new FlightEndpoint(ticket, location);
         // Instantiate ArrowSplit with mock data
-        arrowSplit = new ArrowSplit(schemaName, tableName, ticket, locationUrls);
+        arrowSplit = new ArrowSplit(schemaName, tableName, flightEndpoint.serialize().array());
     }
 
     @Test
     public void testConstructorAndGetters()
+            throws IOException, URISyntaxException
     {
         // Test that the constructor correctly initializes fields
         assertEquals(arrowSplit.getSchemaName(), schemaName, "Schema name should match.");
         assertEquals(arrowSplit.getTableName(), tableName, "Table name should match.");
-        assertEquals(arrowSplit.getTicket(), ticket, "Ticket byte array should match.");
-        assertEquals(arrowSplit.getLocationUrls(), locationUrls, "Location URLs list should match.");
+        assertEquals(arrowSplit.getByteArray(), flightEndpoint.serialize().array(), "Byte array should match");
     }
 
     @Test

@@ -28,16 +28,19 @@ public class TestingArrowSplitManager
 
     private final NodeManager nodeManager;
 
+    private final ArrowFlightConfig config;
+
     @Inject
     public TestingArrowSplitManager(ArrowFlightConfig config, AbstractArrowFlightClientHandler client, TestingArrowFlightConfig testConfig, NodeManager nodeManager)
     {
-        super(client);
+        super(client, config);
         this.testConfig = testConfig;
         this.nodeManager = nodeManager;
+        this.config = config;
     }
 
     @Override
-    protected FlightDescriptor getFlightDescriptor(ArrowFlightConfig config, ArrowTableLayoutHandle tableLayoutHandle)
+    protected FlightDescriptor getFlightDescriptor(ArrowTableLayoutHandle tableLayoutHandle)
     {
         ArrowTableHandle tableHandle = tableLayoutHandle.getTableHandle();
         Optional<String> query = Optional.of(new TestingArrowQueryBuilder().buildSql(tableHandle.getSchema(),

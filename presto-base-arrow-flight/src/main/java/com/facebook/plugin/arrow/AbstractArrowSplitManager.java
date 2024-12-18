@@ -13,7 +13,6 @@
  */
 package com.facebook.plugin.arrow;
 
-import com.facebook.airlift.log.Logger;
 import com.facebook.presto.spi.ConnectorSession;
 import com.facebook.presto.spi.ConnectorSplitSource;
 import com.facebook.presto.spi.ConnectorTableLayoutHandle;
@@ -31,22 +30,24 @@ import static java.util.Objects.requireNonNull;
 public abstract class AbstractArrowSplitManager
         implements ConnectorSplitManager
 {
-    private static final Logger logger = Logger.get(AbstractArrowSplitManager.class);
     private final AbstractArrowFlightClientHandler clientHandler;
 
-    public AbstractArrowSplitManager(AbstractArrowFlightClientHandler clientHandler)
+    private ArrowFlightConfig arrowFlightConfig;
+
+    public AbstractArrowSplitManager(AbstractArrowFlightClientHandler clientHandler, ArrowFlightConfig arrowFlightConfig)
     {
         this.clientHandler = requireNonNull(clientHandler, "clientHandler is null");
+        this.arrowFlightConfig = requireNonNull(arrowFlightConfig, "arrowFlightConfig is null");
     }
 
-    protected abstract FlightDescriptor getFlightDescriptor(ArrowFlightConfig config, ArrowTableLayoutHandle tableLayoutHandle);
+    protected abstract FlightDescriptor getFlightDescriptor(ArrowTableLayoutHandle tableLayoutHandle);
 
     @Override
     public ConnectorSplitSource getSplits(ConnectorTransactionHandle transactionHandle, ConnectorSession session, ConnectorTableLayoutHandle layout, SplitSchedulingContext splitSchedulingContext)
     {
         ArrowTableLayoutHandle tableLayoutHandle = (ArrowTableLayoutHandle) layout;
         ArrowTableHandle tableHandle = tableLayoutHandle.getTableHandle();
-        FlightDescriptor flightDescriptor = getFlightDescriptor(clientHandler.getConfig(),
+        FlightDescriptor flightDescriptor = getFlightDescriptor(
                 tableLayoutHandle);
 
         FlightInfo flightInfo = clientHandler.getFlightInfo(flightDescriptor, session);
@@ -55,8 +56,7 @@ public abstract class AbstractArrowSplitManager
                 .map(info -> new ArrowSplit(
                         tableHandle.getSchema(),
                         tableHandle.getTable(),
-                        info.getTicket().getBytes(),
-                        info.getLocations().stream().map(location -> location.getUri().toString()).collect(toImmutableList())))
+                        info.serialize().array()))
                 .collect(toImmutableList());
         return new FixedSplitSource(splits);
     }

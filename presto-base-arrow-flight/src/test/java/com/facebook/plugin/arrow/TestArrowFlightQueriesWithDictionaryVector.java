@@ -14,7 +14,6 @@
 package com.facebook.plugin.arrow;
 
 import com.facebook.airlift.log.Logger;
-import com.facebook.presto.common.type.BigintType;
 import com.facebook.presto.testing.MaterializedResult;
 import com.facebook.presto.testing.QueryRunner;
 import com.facebook.presto.tests.AbstractTestQueryFramework;
@@ -28,7 +27,8 @@ import org.testng.annotations.Test;
 
 import java.io.File;
 
-import static com.facebook.presto.common.type.VarcharType.createVarcharType;
+import static com.facebook.presto.common.type.BigintType.BIGINT;
+import static com.facebook.presto.common.type.VarcharType.VARCHAR;
 import static com.facebook.presto.testing.MaterializedResult.resultBuilder;
 import static com.facebook.presto.testing.assertions.Assert.assertEquals;
 
@@ -84,7 +84,7 @@ public class TestArrowFlightQueriesWithDictionaryVector
         // Validate the row count first
         assertEquals(actual.getRowCount(), 3);
         // Now, validate each row
-        MaterializedResult expectedRow = resultBuilder(getSession(), createVarcharType(10), BigintType.BIGINT)
+        MaterializedResult expectedRow = resultBuilder(getSession(), VARCHAR, BIGINT)
                 .row("apple", 0L)
                 .row("banana", 1L)
                 .row("cherry", 2L)

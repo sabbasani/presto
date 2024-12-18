@@ -25,19 +25,14 @@ public class TestingArrowFlightRequest
     private final String schema;
     private final String table;
     private final Optional<String> query;
-    private final ArrowFlightConfig config;
-    private final int noOfPartitions;
-
     private final TestingArrowFlightConfig testconfig;
 
     public TestingArrowFlightRequest(ArrowFlightConfig config, TestingArrowFlightConfig testconfig, String schema, String table, Optional<String> query, int noOfPartitions)
     {
-        this.config = config;
         this.schema = schema;
         this.table = table;
         this.query = query;
         this.testconfig = testconfig;
-        this.noOfPartitions = noOfPartitions;
     }
 
     public TestingArrowFlightRequest(ArrowFlightConfig config, String schema, int noOfPartitions, TestingArrowFlightConfig testconfig)
@@ -45,9 +40,7 @@ public class TestingArrowFlightRequest
         this.schema = schema;
         this.table = null;
         this.query = Optional.empty();
-        this.config = config;
         this.testconfig = testconfig;
-        this.noOfPartitions = noOfPartitions;
     }
 
     public String getSchema()

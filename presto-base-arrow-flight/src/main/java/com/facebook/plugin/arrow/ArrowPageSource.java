@@ -19,17 +19,22 @@ import com.facebook.presto.common.block.Block;
 import com.facebook.presto.common.type.Type;
 import com.facebook.presto.spi.ConnectorPageSource;
 import com.facebook.presto.spi.ConnectorSession;
+import org.apache.arrow.flight.FlightEndpoint;
 import org.apache.arrow.flight.FlightRuntimeException;
 import org.apache.arrow.flight.FlightStream;
 import org.apache.arrow.flight.Ticket;
 import org.apache.arrow.vector.FieldVector;
 import org.apache.arrow.vector.VectorSchemaRoot;
 
+import java.io.IOException;
+import java.net.URISyntaxException;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
 import static com.facebook.plugin.arrow.ArrowErrorCode.ARROW_FLIGHT_CLIENT_ERROR;
+import static com.google.common.collect.ImmutableList.toImmutableList;
 import static java.util.Objects.requireNonNull;
 
 public class ArrowPageSource
@@ -55,19 +60,44 @@ public class ArrowPageSource
         this.columnHandles = requireNonNull(columnHandles, "columnHandles is null");
         this.split = requireNonNull(split, "split is null");
         this.arrowBlockBuilder = requireNonNull(arrowBlockBuilder, "arrowBlockBuilder is null");
-        getFlightStream(clientHandler, split.getTicket(), connectorSession);
+        getFlightStream(clientHandler, getTicket(ByteBuffer.wrap(split.getByteArray())), connectorSession);
+    }
+
+    private byte[] getTicket(ByteBuffer byteArray)
+    {
+        try {
+            return FlightEndpoint.deserialize(byteArray).getTicket().getBytes();
+        }
+        catch (Exception e) {
+            throw new ArrowException(ARROW_FLIGHT_CLIENT_ERROR, e.getMessage(), e);
+        }
     }
 
     private void getFlightStream(AbstractArrowFlightClientHandler clientHandler, byte[] ticket, ConnectorSession connectorSession)
     {
         try {
-            Optional<String> uri = (split.getLocationUrls().isEmpty()) ?
-                    Optional.empty() : Optional.of(split.getLocationUrls().get(0));
-            flightClient = clientHandler.getClient(uri);
+            Optional<String> uri = getLocationUrls(ByteBuffer.wrap(split.getByteArray())).stream().findFirst();
+            flightClient = createArrowFlightClient(clientHandler, uri);
             flightStream = flightClient.getFlightClient().getStream(new Ticket(ticket), clientHandler.getCallOptions(connectorSession));
         }
-        catch (FlightRuntimeException e) {
+        catch (FlightRuntimeException | IOException | URISyntaxException e) {
             throw new ArrowException(ARROW_FLIGHT_CLIENT_ERROR, e.getMessage(), e);
+        }
+    }
+
+    public List<String> getLocationUrls(ByteBuffer byteArray)
+            throws IOException, URISyntaxException
+    {
+        return FlightEndpoint.deserialize(byteArray).getLocations().stream().map(location -> location.getUri().toString()).collect(toImmutableList());
+    }
+
+    private ArrowFlightClient createArrowFlightClient(AbstractArrowFlightClientHandler clientHandler, Optional<String> uri)
+    {
+        if (uri.isPresent()) {
+            return clientHandler.createArrowFlightClient(uri.get());
+        }
+        else {
+            return clientHandler.createArrowFlightClient();
         }
     }
 

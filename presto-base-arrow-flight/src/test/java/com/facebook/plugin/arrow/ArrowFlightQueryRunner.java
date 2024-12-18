@@ -40,7 +40,7 @@ public class ArrowFlightQueryRunner
     {
         Session session = testSessionBuilder()
                 .setCatalog("arrow")
-                .setSchema("testdb")
+                .setSchema("tpch")
                 .build();
 
         DistributedQueryRunner queryRunner = DistributedQueryRunner.builder(session).build();

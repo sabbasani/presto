@@ -83,6 +83,6 @@ public class ArrowConnector
     @Override
     public void shutdown()
     {
-        arrowFlightClientHandler.closeRootallocator();
+        arrowFlightClientHandler.closeRootAllocator();
     }
 }
