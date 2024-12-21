@@ -13,10 +13,12 @@
  */
 package com.facebook.plugin.arrow.tests;
 
+import com.facebook.airlift.json.JsonCodec;
 import com.facebook.airlift.log.Logger;
-import com.facebook.plugin.arrow.TestingH2DatabaseSetup;
-import com.fasterxml.jackson.databind.JsonNode;
+import com.facebook.plugin.arrow.TestingArrowFlightRequest;
+import com.facebook.plugin.arrow.TestingArrowFlightResponse;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.common.collect.ImmutableList;
 import org.apache.arrow.flight.Action;
 import org.apache.arrow.flight.ActionType;
 import org.apache.arrow.flight.Criteria;
@@ -41,21 +43,19 @@ import org.apache.arrow.vector.types.pojo.Field;
 import org.apache.arrow.vector.types.pojo.FieldType;
 import org.apache.arrow.vector.types.pojo.Schema;
 
-import java.nio.charset.StandardCharsets;
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.List;
-import java.util.concurrent.ThreadLocalRandom;
+import java.util.Optional;
+
+import static com.facebook.airlift.json.JsonCodec.jsonCodec;
 
 public class TestingArrowServerUsingDictionaryVector
         implements FlightProducer
 {
     private final RootAllocator allocator;
     private final ObjectMapper objectMapper = new ObjectMapper();
-    private final Connection connection;
+    private final JsonCodec<TestingArrowFlightRequest> requestCodec;
+    private final JsonCodec<TestingArrowFlightResponse> responseCodec;
 
     private static final Logger logger = Logger.get(TestingArrowServerUsingDictionaryVector.class);
 
@@ -63,9 +63,8 @@ public class TestingArrowServerUsingDictionaryVector
             throws Exception
     {
         this.allocator = allocator;
-        String h2JdbcUrl = "jdbc:h2:mem:testdb" + System.nanoTime() + "_" + ThreadLocalRandom.current().nextInt() + ";DB_CLOSE_DELAY=-1";
-        TestingH2DatabaseSetup.setup(h2JdbcUrl);
-        this.connection = DriverManager.getConnection(h2JdbcUrl, "sa", "");
+        this.requestCodec = jsonCodec(TestingArrowFlightRequest.class);
+        this.responseCodec = jsonCodec(TestingArrowFlightResponse.class);
     }
 
     @Override
@@ -155,22 +154,20 @@ public class TestingArrowServerUsingDictionaryVector
     public void doAction(CallContext callContext, Action action, StreamListener<Result> streamListener)
     {
         try {
-            String jsonRequest = new String(action.getBody(), StandardCharsets.UTF_8);
-            JsonNode rootNode = objectMapper.readTree(jsonRequest);
-            String schemaName = rootNode.get("interactionProperties").get("schema_name").asText(null);
+            TestingArrowFlightRequest request = requestCodec.fromJson(action.getBody());
+            Optional<String> schemaName = request.getSchema();
 
-            List<String> names = new ArrayList<>();
-            if (schemaName == null) {
+            TestingArrowFlightResponse response;
+            if (!schemaName.isPresent()) {
                 // Return the list of schemas
-                names.add("TPCH");
+                response = new TestingArrowFlightResponse(ImmutableList.of("TPCH"), ImmutableList.of());
             }
             else {
                 // Return the list of tables
-                names.add("LINEITEM");
+                response = new TestingArrowFlightResponse(ImmutableList.of(), ImmutableList.of("LINEITEM"));
             }
 
-            String jsonResponse = objectMapper.writeValueAsString(names);
-            streamListener.onNext(new Result(jsonResponse.getBytes(StandardCharsets.UTF_8)));
+            streamListener.onNext(new Result(responseCodec.toJsonBytes(response)));
             streamListener.onCompleted();
         }
         catch (Exception e) {

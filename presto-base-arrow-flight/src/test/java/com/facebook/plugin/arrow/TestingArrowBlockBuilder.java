@@ -19,6 +19,8 @@ import com.facebook.presto.common.type.Type;
 import com.facebook.presto.common.type.VarcharType;
 import org.apache.arrow.vector.types.pojo.Field;
 
+import java.util.Optional;
+
 public class TestingArrowBlockBuilder
         extends ArrowBlockBuilder
 {
@@ -28,7 +30,7 @@ public class TestingArrowBlockBuilder
         String columnLength = field.getMetadata().get("columnLength");
         int length = columnLength != null ? Integer.parseInt(columnLength) : 0;
 
-        String nativeType = field.getMetadata().get("columnNativeType");
+        String nativeType = Optional.ofNullable(field.getMetadata().get("columnNativeType")).orElse("");
 
         switch (nativeType) {
             case "CHAR":
