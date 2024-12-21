@@ -63,7 +63,7 @@ public class ArrowFlightQueryRunner
             ImmutableMap.Builder<String, String> properties = ImmutableMap.<String, String>builder()
                     .putAll(catalogProperties)
                     .put("arrow-flight.server", "127.0.0.1")
-                    .put("arrow-flight.server-ssl-enabled", "false")
+                    .put("arrow-flight.server-ssl-enabled", "true")
                     .put("arrow-flight.server.verify", "false");
 
             queryRunner.createCatalog("arrow", "arrow", properties.build());
