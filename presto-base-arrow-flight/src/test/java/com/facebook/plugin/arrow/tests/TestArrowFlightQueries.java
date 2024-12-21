@@ -64,7 +64,7 @@ public class TestArrowFlightQueries
         File privateKeyFile = new File("src/test/resources/server.key");
 
         allocator = new RootAllocator(Long.MAX_VALUE);
-        serverLocation = Location.forGrpcTls("127.0.0.1", 9443);
+        serverLocation = Location.forGrpcTls("localhost", 9443);
         server = FlightServer.builder(allocator, serverLocation, new TestingArrowServer(allocator))
                 .useTls(certChainFile, privateKeyFile)
                 .build();

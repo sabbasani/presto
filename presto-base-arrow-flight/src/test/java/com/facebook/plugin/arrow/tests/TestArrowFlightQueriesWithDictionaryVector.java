@@ -50,7 +50,7 @@ public class TestArrowFlightQueriesWithDictionaryVector
         File privateKeyFile = new File("src/test/resources/server.key");
 
         allocator = new RootAllocator(Long.MAX_VALUE);
-        serverLocation = Location.forGrpcTls("127.0.0.1", 9444);
+        serverLocation = Location.forGrpcTls("localhost", 9444);
 
         server = FlightServer.builder(allocator, serverLocation, new TestingArrowServerUsingDictionaryVector(allocator))
                 .useTls(certChainFile, privateKeyFile)
