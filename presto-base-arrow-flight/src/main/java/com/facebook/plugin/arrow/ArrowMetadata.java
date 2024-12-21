@@ -51,14 +51,12 @@ public class ArrowMetadata
         implements ConnectorMetadata
 {
     private static final Logger logger = Logger.get(ArrowMetadata.class);
-    private final ArrowFlightConfig config;
     private final BaseArrowFlightClient clientHandler;
     private final ArrowBlockBuilder arrowBlockBuilder;
 
     @Inject
-    public ArrowMetadata(ArrowFlightConfig config, BaseArrowFlightClient clientHandler, ArrowBlockBuilder arrowBlockBuilder)
+    public ArrowMetadata(BaseArrowFlightClient clientHandler, ArrowBlockBuilder arrowBlockBuilder)
     {
-        this.config = requireNonNull(config, "config is null");
         this.clientHandler = requireNonNull(clientHandler, "clientHandler is null");
         this.arrowBlockBuilder = requireNonNull(arrowBlockBuilder, "arrowPageBuilder is null");
     }
@@ -91,9 +89,7 @@ public class ArrowMetadata
     public List<Field> getColumnsList(String schema, String table, ConnectorSession connectorSession)
     {
         try {
-            String dataSourceSpecificSchemaName = schema;
-            String dataSourceSpecificTableName = table;
-            Schema flightSchema = clientHandler.getSchemaForTable(dataSourceSpecificSchemaName, dataSourceSpecificTableName, connectorSession);
+            Schema flightSchema = clientHandler.getSchemaForTable(schema, table, connectorSession);
             return flightSchema.getFields();
         }
         catch (Exception e) {
@@ -108,9 +104,7 @@ public class ArrowMetadata
 
         String schemaValue = ((ArrowTableHandle) tableHandle).getSchema();
         String tableValue = ((ArrowTableHandle) tableHandle).getTable();
-        String dbSpecificSchemaValue = schemaValue;
-        String dBSpecificTableName = tableValue;
-        List<Field> columnList = getColumnsList(dbSpecificSchemaValue, dBSpecificTableName, session);
+        List<Field> columnList = getColumnsList(schemaValue, tableValue, session);
 
         for (Field field : columnList) {
             String columnName = field.getName();
