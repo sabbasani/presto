@@ -72,12 +72,10 @@ public abstract class BaseArrowFlightClient
     protected FlightClient createClient(Location location)
     {
         try {
-            Optional<InputStream> trustedCertificate = Optional.empty();
-
             if (null == allocator) {
                 initializeAllocator();
             }
-
+            Optional<InputStream> trustedCertificate = Optional.empty();
             FlightClient.Builder flightClientBuilder = FlightClient.builder(allocator, location);
             if (config.getVerifyServer() != null && !config.getVerifyServer()) {
                 flightClientBuilder.verifyServer(false);
@@ -88,6 +86,10 @@ public abstract class BaseArrowFlightClient
             }
 
             FlightClient flightClient = flightClientBuilder.build();
+            if (trustedCertificate.isPresent()) {
+                trustedCertificate.get().close();
+            }
+
             return flightClient;
         }
         catch (Exception e) {
