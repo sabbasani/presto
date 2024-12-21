@@ -64,7 +64,7 @@ public class ArrowFlightQueryRunner
                     .putAll(catalogProperties)
                     .put("arrow-flight.server", "localhost")
                     .put("arrow-flight.server-ssl-enabled", "true")
-                    .put("arrow-flight.server-ssl-certificate","src/test/resources/server.crt")
+                    .put("arrow-flight.server-ssl-certificate", "src/test/resources/server.crt")
                     .put("arrow-flight.server.verify", "true");
 
             queryRunner.createCatalog("arrow", "arrow", properties.build());
