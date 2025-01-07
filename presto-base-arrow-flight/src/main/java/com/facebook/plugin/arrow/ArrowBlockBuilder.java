@@ -60,7 +60,6 @@ import org.apache.arrow.vector.ValueVector;
 import org.apache.arrow.vector.VarBinaryVector;
 import org.apache.arrow.vector.VarCharVector;
 import org.apache.arrow.vector.complex.ListVector;
-import org.apache.arrow.vector.complex.impl.UnionListReader;
 import org.apache.arrow.vector.dictionary.Dictionary;
 import org.apache.arrow.vector.dictionary.DictionaryProvider;
 import org.apache.arrow.vector.types.pojo.ArrowType;
@@ -628,8 +627,11 @@ public class ArrowBlockBuilder
                 builder.appendNull();
             }
             else {
-                String value = new String(vector.get(i), StandardCharsets.UTF_8);
-                type.writeSlice(builder, Slices.utf8Slice(CharMatcher.is(' ').trimTrailingFrom(value)));
+                byte[] rawBytes = vector.get(i); // Get the raw bytes
+                // Create a Slice directly from the raw bytes
+                Slice slice = Slices.wrappedBuffer(rawBytes);
+                // Trim trailing spaces if necessary, then write the Slice
+                type.writeSlice(builder, Slices.utf8Slice(CharMatcher.is(' ').trimTrailingFrom(slice.toString(StandardCharsets.UTF_8))));
             }
         }
         return builder.build();
@@ -668,21 +670,19 @@ public class ArrowBlockBuilder
             }
             else {
                 BlockBuilder elementBuilder = arrayBuilder.beginBlockEntry();
-                UnionListReader reader = vector.getReader();
-                reader.setPosition(i);
 
-                while (reader.next()) {
-                    Object value = reader.readObject();
-                    if (value == null) {
-                        elementBuilder.appendNull();
-                    }
-                    else {
-                        appendValueToBuilder(elementType, elementBuilder, value);
-                    }
-                }
+                // Get the element vector for this position
+                ValueVector elementVector = vector.getDataVector();
+
+                // Use the helper method to build the block for this element vector
+                Block elementBlock = buildBlockFromValueVector(elementVector, elementType);
+
+                // Append the element block to the array builder
+                elementBuilder.appendStructure(elementBlock);
                 arrayBuilder.closeEntry();
             }
         }
+
         return arrayBuilder.build();
     }
 
