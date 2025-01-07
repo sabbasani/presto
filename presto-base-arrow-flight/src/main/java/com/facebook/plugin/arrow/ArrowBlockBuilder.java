@@ -630,11 +630,8 @@ public class ArrowBlockBuilder
                 builder.appendNull();
             }
             else {
-                byte[] rawBytes = vector.get(i); // Get the raw bytes
-                // Create a Slice directly from the raw bytes
-                Slice slice = Slices.wrappedBuffer(rawBytes);
-                // Trim trailing spaces if necessary, then write the Slice
-                type.writeSlice(builder, Slices.utf8Slice(CharMatcher.is(' ').trimTrailingFrom(slice.toString(StandardCharsets.UTF_8))));
+                String value = new String(vector.get(i), StandardCharsets.UTF_8);
+                type.writeSlice(builder, Slices.utf8Slice(CharMatcher.is(' ').trimTrailingFrom(value)));
             }
         }
         return builder.build();
