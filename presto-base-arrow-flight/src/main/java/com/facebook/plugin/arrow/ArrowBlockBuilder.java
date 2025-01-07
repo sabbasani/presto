@@ -494,7 +494,8 @@ public class ArrowBlockBuilder
         for (int i = 0; i < vector.getValueCount(); i++) {
             if (vector.isNull(i)) {
                 builder.appendNull();
-            } else {
+            }
+            else {
                 // Directly create a Slice from the raw byte array
                 byte[] rawBytes = vector.get(i);
                 Slice slice = Slices.wrappedBuffer(rawBytes);
@@ -504,7 +505,6 @@ public class ArrowBlockBuilder
         }
         return builder.build();
     }
-
 
     public Block buildBlockFromDateDayVector(DateDayVector vector, Type type)
     {
