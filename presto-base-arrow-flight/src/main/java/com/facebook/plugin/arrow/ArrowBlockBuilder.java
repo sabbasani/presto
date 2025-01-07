@@ -494,14 +494,17 @@ public class ArrowBlockBuilder
         for (int i = 0; i < vector.getValueCount(); i++) {
             if (vector.isNull(i)) {
                 builder.appendNull();
-            }
-            else {
-                String value = new String(vector.get(i), StandardCharsets.UTF_8);
-                type.writeSlice(builder, Slices.utf8Slice(value));
+            } else {
+                // Directly create a Slice from the raw byte array
+                byte[] rawBytes = vector.get(i);
+                Slice slice = Slices.wrappedBuffer(rawBytes);
+                // Write the Slice directly to the builder
+                type.writeSlice(builder, slice);
             }
         }
         return builder.build();
     }
+
 
     public Block buildBlockFromDateDayVector(DateDayVector vector, Type type)
     {
