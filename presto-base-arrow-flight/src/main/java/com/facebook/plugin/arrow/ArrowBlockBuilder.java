@@ -60,7 +60,6 @@ import org.apache.arrow.vector.ValueVector;
 import org.apache.arrow.vector.VarBinaryVector;
 import org.apache.arrow.vector.VarCharVector;
 import org.apache.arrow.vector.complex.ListVector;
-import org.apache.arrow.vector.complex.impl.UnionListReader;
 import org.apache.arrow.vector.dictionary.Dictionary;
 import org.apache.arrow.vector.dictionary.DictionaryProvider;
 import org.apache.arrow.vector.types.pojo.ArrowType;
@@ -671,17 +670,11 @@ public class ArrowBlockBuilder
             }
             else {
                 BlockBuilder elementBuilder = arrayBuilder.beginBlockEntry();
-                UnionListReader reader = vector.getReader();
-                reader.setPosition(i);
-
-                while (reader.next()) {
-                    Object value = reader.readObject();
-                    if (value == null) {
-                        elementBuilder.appendNull();
-                    }
-                    else {
-                        appendValueToBuilder(elementType, elementBuilder, value);
-                    }
+                FieldVector dataVector = vector.getDataVector();
+                int startIndex = vector.getElementStartIndex(i);
+                int endIndex = vector.getElementEndIndex(i);
+                for (int j = startIndex; j < endIndex; j++) {
+                    appendValueToBuilder(elementType, elementBuilder, dataVector.getObject(j));
                 }
                 arrayBuilder.closeEntry();
             }

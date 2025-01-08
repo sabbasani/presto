@@ -261,6 +261,10 @@ public class TestArrowBlockBuilder
 
             // Validate the result
             assertEquals(block.getPositionCount(), 4); // 4 lists in the block
+            for (int j = 0; j < block.getPositionCount(); j++) {
+                Block subBlock = block.getBlock(j);
+                assertEquals(subBlock.getPositionCount(), 3); // each list should have 3 elements
+            }
         }
     }
 
