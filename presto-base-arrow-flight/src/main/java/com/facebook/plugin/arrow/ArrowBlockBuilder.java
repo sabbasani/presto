@@ -496,8 +496,11 @@ public class ArrowBlockBuilder
                 builder.appendNull();
             }
             else {
-                String value = new String(vector.get(i), StandardCharsets.UTF_8);
-                type.writeSlice(builder, Slices.utf8Slice(value));
+                // Directly create a Slice from the raw byte array
+                byte[] rawBytes = vector.get(i);
+                Slice slice = Slices.wrappedBuffer(rawBytes);
+                // Write the Slice directly to the builder
+                type.writeSlice(builder, slice);
             }
         }
         return builder.build();
