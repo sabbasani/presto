@@ -658,4 +658,28 @@ public class TestArrowBlockBuilder
         // Assert the decoded result is equal to the original decimal value
         assertEquals(result, decimalValue);
     }
+
+    @Test
+    public void testVarcharVector()
+    {
+        VarCharVector vector = new VarCharVector("test_string", allocator);
+        vector.setSafe(0, "apple".getBytes());
+        vector.setSafe(1, "fig".getBytes());
+        vector.setValueCount(2);
+        Block resultblock = arrowBlockBuilder.buildBlockFromVarCharVector(vector, VarcharType.VARCHAR);
+        assertEquals(2, resultblock.getPositionCount());
+        // Extract values from the Block and compare with the values in the vector
+        // Extract values from the Block and compare with the values in the vector
+        for (int i = 0; i < resultblock.getPositionCount(); i++) {
+            // Retrieve the value as a Slice for the ith position in the Block
+            Slice slice = resultblock.getSlice(i, 0, resultblock.getSliceLength(i));
+            // Assert based on the expected values
+            if (i == 0) {
+                assertEquals(slice.toStringUtf8(), new String(vector.get(i)));
+            }
+            else if (i == 1) {
+                assertEquals(slice.toStringUtf8(), new String(vector.get(i)));
+            }
+        }
+    }
 }
